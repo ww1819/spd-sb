@@ -30,10 +30,10 @@ export function register(data) {
   })
 }
 
-// 获取用户详细信息
+// 获取用户详细信息（设备前端使用设备专用接口）
 export function getInfo() {
   return request({
-    url: '/getInfo',
+    url: '/getEquipmentInfo',
     method: 'get'
   })
 }
