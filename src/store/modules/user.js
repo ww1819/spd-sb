@@ -39,8 +39,10 @@ const user = {
       const password = userInfo.password
       const code = userInfo.code
       const uuid = userInfo.uuid
+      const customerId = userInfo.customerId ? userInfo.customerId.trim() : ''
+      const customerCode = userInfo.customerCode ? userInfo.customerCode.trim() : ''
       return new Promise((resolve, reject) => {
-        login(username, password, code, uuid).then(res => {
+        login(username, password, code, uuid, customerId, customerCode).then(res => {
           setToken(res.token)
           commit('SET_TOKEN', res.token)
           resolve()
