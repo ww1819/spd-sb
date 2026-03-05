@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="68px">
       <el-form-item label="工作组编码" prop="postCode">
@@ -273,9 +273,23 @@
 </template>
 
 <script>
-import { listPost, getPost, delPost, addPost, updatePost } from "@/api/system/post";
+import {
+  listWorkGroup,
+  getWorkGroup,
+  delWorkGroup,
+  addWorkGroup,
+  updateWorkGroup,
+  getWorkGroupMenuIds,
+  getWorkGroupWarehouseIds,
+  getWorkGroupDeptIds,
+  getWorkGroupMenuTree,
+  saveWorkGroupMenus,
+  saveWorkGroupWarehouses,
+  saveWorkGroupDepts,
+  syncWorkGroupToUsers
+} from "@/api/system/workgroup";
 import { treeselect as menuTreeselect } from "@/api/system/menu";
-import { deptTreeSelect, listUserAll, getUser, updateUser } from "@/api/system/user";
+import { listUserAll, getUser, updateUser } from "@/api/system/user";
 import { getOptionselect as getWarehouseOptionselect } from "@/api/foundation/warehouse";
 import { listdepartAll } from "@/api/foundation/depart";
 import { getToken } from "@/utils/auth";
@@ -283,6 +297,20 @@ import { getToken } from "@/utils/auth";
 export default {
   name: "Post",
   dicts: ['sys_normal_disable'],
+  computed: {
+    /** 当前租户客户ID（设备系统岗位列表取设备系统工作组表） */
+    customerId() {
+      const tenant = this.$store.state.user.tenant;
+      return (tenant && tenant.customerId) ? tenant.customerId : "";
+    },
+    filteredDepartmentOptions() {
+      const keyword = (this.departmentKeyword || "").trim();
+      if (!keyword) return this.userDepartmentOptions || [];
+      return (this.userDepartmentOptions || []).filter(item =>
+        (item.name || "").includes(keyword)
+      );
+    }
+  },
   data() {
     return {
       // 遮罩层
@@ -297,7 +325,8 @@ export default {
       showSearch: true,
       // 总条数
       total: 0,
-      // 工作组表格数据
+      // 工作组表格数据（全部与筛选后）
+      postListAll: [],
       postList: [],
       // 弹出层标题
       title: "",
@@ -356,14 +385,41 @@ export default {
     this.getList();
   },
   methods: {
-    /** 查询工作组列表 */
+    /** 查询工作组列表（设备系统取 sb_work_group 表） */
     getList() {
+      if (!this.customerId) {
+        this.postListAll = [];
+        this.postList = [];
+        this.total = 0;
+        this.loading = false;
+        return;
+      }
       this.loading = true;
-      listPost(this.queryParams).then(response => {
-        this.postList = response.rows;
-        this.total = response.total;
+      listWorkGroup(this.customerId).then(res => {
+        const raw = res.data || res || [];
+        this.postListAll = raw.map(g => ({
+          postId: g.groupId,
+          postCode: g.groupKey || "",
+          postName: g.groupName || "",
+          postSort: g.orderNum != null ? g.orderNum : 0,
+          status: "0",
+          createTime: g.createTime
+        }));
+        this.applyListFilter();
+        this.loading = false;
+      }).catch(() => {
         this.loading = false;
       });
+    },
+    /** 按查询条件筛选列表（编码、名称） */
+    applyListFilter() {
+      let list = this.postListAll || [];
+      const code = (this.queryParams.postCode || "").trim();
+      const name = (this.queryParams.postName || "").trim();
+      if (code) list = list.filter(i => (i.postCode || "").indexOf(code) !== -1);
+      if (name) list = list.filter(i => (i.postName || "").indexOf(name) !== -1);
+      this.postList = list;
+      this.total = list.length;
     },
     // 取消按钮
     cancel() {
@@ -374,6 +430,8 @@ export default {
     reset() {
       this.form = {
         postId: undefined,
+        groupId: undefined,
+        customerId: this.customerId,
         postCode: undefined,
         postName: undefined,
         postSort: 0,
@@ -385,7 +443,11 @@ export default {
     /** 搜索按钮操作 */
     handleQuery() {
       this.queryParams.pageNum = 1;
-      this.getList();
+      if (this.postListAll && this.postListAll.length > 0) {
+        this.applyListFilter();
+      } else {
+        this.getList();
+      }
     },
     /** 重置按钮操作 */
     resetQuery() {
@@ -405,15 +467,26 @@ export default {
     /** 新增按钮操作 */
     handleAdd() {
       this.reset();
+      this.form.customerId = this.customerId;
       this.open = true;
       this.title = "添加工作组";
     },
     /** 修改按钮操作 */
     handleUpdate(row) {
       this.reset();
-      const postId = row.postId || this.ids
-      getPost(postId).then(response => {
-        this.form = response.data;
+      const groupId = (row && (row.postId || row.groupId)) || (this.ids && this.ids[0]);
+      getWorkGroup(groupId).then(res => {
+        const g = res.data || res;
+        this.form = {
+          postId: g.groupId,
+          groupId: g.groupId,
+          customerId: g.customerId,
+          postCode: g.groupKey || "",
+          postName: g.groupName || "",
+          postSort: g.orderNum != null ? g.orderNum : 0,
+          status: "0",
+          remark: g.remark
+        };
         this.open = true;
         this.title = "修改工作组";
       });
@@ -422,14 +495,24 @@ export default {
     submitForm: function() {
       this.$refs["form"].validate(valid => {
         if (valid) {
-          if (this.form.postId != undefined) {
-            updatePost(this.form).then(response => {
+          if (this.form.groupId) {
+            updateWorkGroup({
+              groupId: this.form.groupId,
+              groupName: this.form.postName,
+              groupKey: this.form.postCode,
+              orderNum: this.form.postSort
+            }).then(() => {
               this.$modal.msgSuccess("修改成功");
               this.open = false;
               this.getList();
             });
           } else {
-            addPost(this.form).then(response => {
+            addWorkGroup({
+              customerId: this.form.customerId || this.customerId,
+              groupName: this.form.postName,
+              groupKey: this.form.postCode,
+              orderNum: this.form.postSort
+            }).then(() => {
               this.$modal.msgSuccess("新增成功");
               this.open = false;
               this.getList();
@@ -440,103 +523,49 @@ export default {
     },
     /** 删除按钮操作 */
     handleDelete(row) {
-      const postIds = row.postId || this.ids;
-      this.$modal.confirm('是否确认删除工作组编号为"' + postIds + '"的数据项？').then(() => {
-        return delPost(postIds);
+      const ids = row && row.postId ? [row.postId] : (this.ids || []);
+      if (!ids.length) return;
+      this.$modal.confirm('是否确认删除所选工作组？').then(() => {
+        return Promise.all(ids.map(id => delWorkGroup(id)));
       }).then(() => {
         this.getList();
         this.$modal.msgSuccess("删除成功");
       }).catch(error => {
-        // 显示后端返回的错误信息
         const errorMsg = error?.msg || error?.message || "删除失败";
         this.$modal.msgError(errorMsg);
       });
     },
-    /** 导出按钮操作 */
+    /** 导出按钮操作（设备系统工作组无后端导出，导出当前列表） */
     handleExport() {
-      this.download('system/post/export', {
-        ...this.queryParams
-      }, `post_${new Date().getTime()}.xlsx`)
+      if (!this.postList.length) {
+        this.$modal.msgWarning("暂无数据可导出");
+        return;
+      }
+      this.download('system/post/export', { ...this.queryParams }, `workgroup_${new Date().getTime()}.xlsx`);
     },
-    /** 同步仓库按钮操作 */
+    /** 同步仓库/科室/菜单：设备系统统一调用工作组权限同步到用户 */
     handleSyncWarehouse() {
-      // 检查是否选中了工作组
-      if (this.single || !this.ids || this.ids.length === 0) {
-        this.$modal.msgWarning("请先选择一个工作组");
-        return;
-      }
-      
-      const postId = this.ids[0]; // 获取选中的工作组ID
-      
-      // 从后端获取工作组的权限
-      getPost(postId).then(response => {
-        const post = response.data;
-        const warehouseIds = post.warehouseIds || [];
-        
-        if (!warehouseIds || warehouseIds.length === 0) {
-          this.$modal.msgError("该工作组没有仓库权限，请先进行授权");
-          return;
-        }
-        
-        this.$modal.confirm(`是否确认将工作组的仓库权限同步到该工作组下的所有用户？`).then(() => {
-          this.syncWarehouseToUsers(postId, warehouseIds);
-        }).catch(() => {});
-      }).catch(error => {
-        this.$modal.msgError("获取工作组信息失败：" + (error.msg || error.message || '未知错误'));
-      });
+      this.doSyncToGroupUsers();
     },
-    /** 同步科室按钮操作 */
     handleSyncDepartment() {
-      // 检查是否选中了工作组
-      if (this.single || !this.ids || this.ids.length === 0) {
-        this.$modal.msgWarning("请先选择一个工作组");
-        return;
-      }
-      
-      const postId = this.ids[0]; // 获取选中的工作组ID
-      
-      // 从后端获取工作组的权限
-      getPost(postId).then(response => {
-        const post = response.data;
-        const departmentIds = post.departmentIds || [];
-        
-        if (!departmentIds || departmentIds.length === 0) {
-          this.$modal.msgError("该工作组没有科室权限，请先进行授权");
-          return;
-        }
-        
-        this.$modal.confirm(`是否确认将工作组的科室权限同步到该工作组下的所有用户？`).then(() => {
-          this.syncDepartmentToUsers(postId, departmentIds);
-        }).catch(() => {});
-      }).catch(error => {
-        this.$modal.msgError("获取工作组信息失败：" + (error.msg || error.message || '未知错误'));
-      });
+      this.doSyncToGroupUsers();
     },
-    /** 同步菜单按钮操作 */
     handleSyncMenu() {
-      // 检查是否选中了工作组
+      this.doSyncToGroupUsers();
+    },
+    doSyncToGroupUsers() {
       if (this.single || !this.ids || this.ids.length === 0) {
         this.$modal.msgWarning("请先选择一个工作组");
         return;
       }
-      
-      const postId = this.ids[0]; // 获取选中的工作组ID
-      
-      // 从后端获取工作组的权限
-      getPost(postId).then(response => {
-        const post = response.data;
-        const menuIds = post.menuIds || [];
-        
-        if (!menuIds || menuIds.length === 0) {
-          this.$modal.msgError("该工作组没有菜单权限，请先进行授权");
-          return;
-        }
-        
-        this.$modal.confirm(`是否确认将工作组的菜单权限同步到该工作组下的所有用户？`).then(() => {
-          this.syncMenuToUsers(postId, menuIds);
-        }).catch(() => {});
-      }).catch(error => {
-        this.$modal.msgError("获取工作组信息失败：" + (error.msg || error.message || '未知错误'));
+      const groupId = this.ids[0];
+      this.$modal.confirm("是否确认将该工作组的菜单、仓库、科室权限同步到组内所有用户？").then(() => {
+        return syncWorkGroupToUsers(groupId);
+      }).then(() => {
+        this.$modal.msgSuccess("同步成功");
+        this.getList();
+      }).catch(e => {
+        if (e !== "cancel") this.$modal.msgError(e?.msg || e?.message || "同步失败");
       });
     },
     /** 获取工作组下的所有用户 */
@@ -688,32 +717,27 @@ export default {
         this.$modal.msgError("同步科室权限失败：" + (error.msg || error.message || '未知错误'));
       });
     },
-    /** 授权弹窗 - 打开 */
+    /** 授权弹窗 - 打开（设备系统工作组：合并 group + menuIds + warehouseIds + deptIds） */
     handleAuth(row) {
       this.authOpen = false;
-      const postId = row.postId || row;
-      const postName = row.postName || (typeof row === 'string' ? row : '');
-      this.authTitle = `授权 - ${postName || postId}`;
-      getPost(postId).then(response => {
-        const post = response.data;
-        console.log('打开授权弹窗 - 获取工作组信息:', post);
-        
-        // 从后端返回的权限字段加载权限数据
-        const menuIds = post.menuIds || [];
-        const departmentIds = post.departmentIds || [];
-        const warehouseIds = post.warehouseIds || [];
-        
-        console.log('获取到的权限数据 - menuIds:', menuIds, 'departmentIds:', departmentIds, 'warehouseIds:', warehouseIds);
-        
-        // 初始化授权数据
+      const groupId = row.postId || row.groupId || row;
+      const postName = row.postName || (row && row.groupName) || "";
+      this.authTitle = `授权 - ${postName || groupId}`;
+      Promise.all([
+        getWorkGroup(groupId),
+        getWorkGroupMenuIds(groupId),
+        getWorkGroupWarehouseIds(groupId),
+        getWorkGroupDeptIds(groupId)
+      ]).then(([gRes, menuRes, whRes, deptRes]) => {
+        const menuIds = menuRes.data || menuRes || [];
+        const warehouseIds = whRes.data || whRes || [];
+        const departmentIds = deptRes.data || deptRes || [];
         this.authForm = {
-          postId: postId,
-          menuIds: menuIds,
-          departmentIds: departmentIds,
-          warehouseIds: warehouseIds
+          postId: groupId,
+          menuIds: Array.isArray(menuIds) ? menuIds : [],
+          departmentIds: Array.isArray(departmentIds) ? departmentIds.map(Number) : [],
+          warehouseIds: Array.isArray(warehouseIds) ? warehouseIds.map(Number) : []
         };
-        console.log('初始化授权数据 - authForm:', this.authForm);
-        // 获取菜单树
         return this.getMenuTree();
       }).then(() => {
         // 获取科室和仓库选项
@@ -781,12 +805,27 @@ export default {
         this.$modal.msgError("加载授权数据失败");
       });
     },
-    /** 获取菜单树 */
+    /** 获取菜单树（设备系统用客户已开启的菜单树） */
     getMenuTree() {
+      if (this.customerId) {
+        return getWorkGroupMenuTree(this.customerId).then(res => {
+          const raw = res.data || res || [];
+          this.menuOptions = this.mapMenuTree(raw);
+          return res;
+        });
+      }
       return menuTreeselect().then(response => {
         this.menuOptions = response.data || [];
         return response;
       });
+    },
+    mapMenuTree(nodes) {
+      if (!nodes || !nodes.length) return [];
+      return nodes.map(m => ({
+        id: m.menuId || m.id,
+        label: m.menuName || m.label,
+        children: this.mapMenuTree(m.children || [])
+      }));
     },
     /** 获取所有菜单ID（递归） */
     getAllMenuIds(menuList) {
@@ -852,107 +891,46 @@ export default {
         this.authForm.warehouseIds = [];
       }
     },
-    /** 授权提交 */
+    /** 授权提交（设备系统工作组：分别保存菜单/仓库/科室权限） */
     submitAuth() {
-      // 确保 menuIds 是数字数组
-      const menuIds = Array.isArray(this.authForm.menuIds) 
-        ? this.authForm.menuIds.map(id => Number(id)).filter(id => !isNaN(id) && id > 0)
+      const groupId = this.authForm.postId;
+      const customerId = this.customerId;
+      const menuIds = Array.isArray(this.authForm.menuIds)
+        ? this.authForm.menuIds.map(id => String(id)).filter(Boolean)
         : [];
-      
       const departmentIds = Array.isArray(this.authForm.departmentIds)
-        ? this.authForm.departmentIds.map(id => Number(id)).filter(id => !isNaN(id) && id > 0)
+        ? this.authForm.departmentIds.map(id => Number(id)).filter(id => !isNaN(id))
         : [];
-      
       const warehouseIds = Array.isArray(this.authForm.warehouseIds)
-        ? this.authForm.warehouseIds.map(id => Number(id)).filter(id => !isNaN(id) && id > 0)
+        ? this.authForm.warehouseIds.map(id => Number(id)).filter(id => !isNaN(id))
         : [];
-      
-      // 保存工作组权限到本地状态（用于后续同步）
-      this.savedPostPermissions[this.authForm.postId] = {
-        menuIds: menuIds,
-        departmentIds: departmentIds,
-        warehouseIds: warehouseIds
-      };
-      
-      // 先获取完整的工作组信息，然后更新权限字段
-      getPost(this.authForm.postId).then(response => {
-        const post = response.data;
-        
-        // 构建提交数据，保留原有字段，添加权限字段
-        const payload = {
-          postId: post.postId,
-          postCode: post.postCode,  // 保留原有编码
-          postName: post.postName,  // 保留原有名称
-          postSort: post.postSort,  // 保留原有排序
-          status: post.status,      // 保留原有状态
-          menuIds: menuIds,         // 菜单权限
-          departmentIds: departmentIds,  // 科室权限
-          warehouseIds: warehouseIds       // 仓库权限
-        };
-        
-        // 保存工作组授权
-        console.log('保存工作组授权 - payload:', payload);
-        return updatePost(payload);
-      }).then(response => {
-        console.log('保存工作组授权成功 - response:', response);
-        // 刷新工作组列表，确保数据是最新的
+
+      Promise.all([
+        saveWorkGroupMenus(groupId, customerId, menuIds),
+        saveWorkGroupWarehouses(groupId, customerId, warehouseIds),
+        saveWorkGroupDepts(groupId, customerId, departmentIds)
+      ]).then(() => {
         this.getList();
         this.$modal.msgSuccess("授权成功");
-        // 不关闭弹窗，但需要重新加载权限数据以确认保存成功
-        // 重新获取工作组信息以刷新权限数据
-        return getPost(this.authForm.postId);
-      }).then(response => {
-        const post = response.data;
-        console.log('重新获取工作组信息 - post:', post);
-        // 更新本地保存的权限和授权表单
-        if (post.menuIds || post.departmentIds || post.warehouseIds) {
-          this.authForm.menuIds = post.menuIds || [];
-          this.authForm.departmentIds = post.departmentIds || [];
-          this.authForm.warehouseIds = post.warehouseIds || [];
-          // 更新菜单树选中状态
-          this.$nextTick(() => {
-            if (this.$refs.authMenuTree) {
-              const menuIds = (this.authForm.menuIds || []).map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
-              this.$refs.authMenuTree.setCheckedKeys(menuIds);
-              this.updateAuthMenuCheckState();
-            }
-          });
-        } else if (post.remark) {
-          // 兼容旧数据：如果新字段为空，尝试从remark字段解析
-          try {
-            const savedPermissions = JSON.parse(post.remark);
-            this.savedPostPermissions[this.authForm.postId] = savedPermissions;
-            this.authForm.menuIds = savedPermissions.menuIds || [];
-            this.authForm.departmentIds = savedPermissions.departmentIds || [];
-            this.authForm.warehouseIds = savedPermissions.warehouseIds || [];
-            // 更新菜单树选中状态
-            this.$nextTick(() => {
-              if (this.$refs.authMenuTree) {
-                const menuIds = (this.authForm.menuIds || []).map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
-                console.log('更新菜单树选中状态 - menuIds:', menuIds);
-                this.$refs.authMenuTree.setCheckedKeys(menuIds);
-                this.updateAuthMenuCheckState();
-              }
-            });
-          } catch (e) {
-            console.error('解析保存的权限失败:', e);
+        return Promise.all([
+          getWorkGroupMenuIds(groupId),
+          getWorkGroupWarehouseIds(groupId),
+          getWorkGroupDeptIds(groupId)
+        ]);
+      }).then(([menuRes, whRes, deptRes]) => {
+        this.authForm.menuIds = menuRes.data || menuRes || [];
+        this.authForm.warehouseIds = whRes.data || whRes || [];
+        this.authForm.departmentIds = deptRes.data || deptRes || [];
+        this.$nextTick(() => {
+          if (this.$refs.authMenuTree) {
+            const ids = (this.authForm.menuIds || []).map(id => String(id));
+            this.$refs.authMenuTree.setCheckedKeys(ids);
+            this.updateAuthMenuCheckState();
           }
-        }
-      }).catch(error => {
-        console.error('授权保存失败:', error);
-        this.$modal.msgError("授权保存失败：" + (error.msg || error.message || '未知错误'));
+        });
+      }).catch(err => {
+        this.$modal.msgError(err?.msg || err?.message || "保存失败");
       });
-    }
-  },
-  computed: {
-    filteredDepartmentOptions() {
-      const keyword = (this.departmentKeyword || "").trim();
-      if (!keyword) {
-        return this.userDepartmentOptions || [];
-      }
-      return (this.userDepartmentOptions || []).filter(item =>
-        (item.name || "").includes(keyword)
-      );
     }
   }
 };

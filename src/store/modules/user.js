@@ -8,7 +8,9 @@ const user = {
     userId: '',
     avatar: '',
     roles: [],
-    permissions: []
+    permissions: [],
+    // 租户信息：customerName 用于首页展示；customerId、customerCode 供请求使用，界面不展示
+    tenant: null
   },
 
   mutations: {
@@ -29,6 +31,9 @@ const user = {
     },
     SET_PERMISSIONS: (state, permissions) => {
       state.permissions = permissions
+    },
+    SET_TENANT: (state, tenant) => {
+      state.tenant = tenant
     }
   },
 
@@ -67,6 +72,11 @@ const user = {
           commit('SET_NAME', user.userName)
           commit('SET_ID', user.userId)
           commit('SET_AVATAR', avatar)
+          if (res.tenant) {
+            commit('SET_TENANT', res.tenant)
+          } else {
+            commit('SET_TENANT', null)
+          }
           resolve(res)
         }).catch(error => {
           reject(error)
@@ -81,6 +91,7 @@ const user = {
           commit('SET_TOKEN', '')
           commit('SET_ROLES', [])
           commit('SET_PERMISSIONS', [])
+          commit('SET_TENANT', null)
           removeToken()
           resolve()
         }).catch(error => {
@@ -93,6 +104,7 @@ const user = {
     FedLogOut({ commit }) {
       return new Promise(resolve => {
         commit('SET_TOKEN', '')
+        commit('SET_TENANT', null)
         removeToken()
         resolve()
       })

@@ -41,6 +41,14 @@ export function roleMenuTreeselect(roleId) {
   })
 }
 
+// 客户菜单分配用菜单树（排除客户管理）
+export function treeselectForCustomerAssign() {
+  return request({
+    url: '/equipment/system/menu/treeselectForCustomerAssign',
+    method: 'get'
+  })
+}
+
 // 新增菜单
 export function addMenu(data) {
   return request({
