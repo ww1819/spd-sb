@@ -1,12 +1,14 @@
 import request from '@/utils/request'
 
-// 登录方法
-export function login(username, password, code, uuid) {
+// 登录方法（customerId 优先用于客户校验，无则传 customerCode）
+export function login(username, password, code, uuid, customerId, customerCode) {
   const data = {
     username,
     password,
     code,
-    uuid
+    uuid,
+    customerId: customerId || undefined,
+    customerCode: customerCode || undefined
   }
   return request({
     url: '/login',
@@ -15,6 +17,17 @@ export function login(username, password, code, uuid) {
     },
     method: 'post',
     data: data
+  })
+}
+
+// 登录页客户下拉选项（未登录可访问）
+export function getCustomerOptions() {
+  return request({
+    url: '/getCustomerOptions',
+    headers: {
+      isToken: false
+    },
+    method: 'get'
   })
 }
 

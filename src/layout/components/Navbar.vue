@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="navbar">
     <hamburger id="hamburger-container" :is-active="sidebar.opened" class="hamburger-container" @toggleClick="toggleSideBar" />
 
@@ -7,8 +7,11 @@
 
     <div class="right-menu">
       <template v-if="device!=='mobile'">
-        <!-- 组织机构显示框 -->
-        <div class="organization-wrapper">
+        <!-- 租户/组织机构：租户用户仅展示租户名称，不展示租户id与编码 -->
+        <div class="organization-wrapper" v-if="tenantName">
+          <span class="organization-text">{{ tenantName }}</span>
+        </div>
+        <div class="organization-wrapper" v-else>
           <span class="organization-text">{{ organizationUnit || '组织机构' }}</span>
         </div>
 
@@ -165,6 +168,11 @@ export default {
       'avatar',
       'device'
     ]),
+    /** 仅用于展示的租户名称（不展示 id、编码） */
+    tenantName() {
+      const tenant = this.$store.state.user.tenant
+      return (tenant && tenant.customerName) ? tenant.customerName : ''
+    },
     setting: {
       get() {
         return this.$store.state.settings.showSettings
@@ -345,11 +353,11 @@ export default {
       vertical-align: middle;
       position: relative;
       top: -6px;
-      
+
       ::v-deep .el-badge__content {
         top: 8px !important;
       }
-      
+
       .message-icon-wrapper {
         display: inline-block;
         padding: 0 8px;
@@ -358,7 +366,7 @@ export default {
         color: #5a5e66;
         vertical-align: text-bottom;
         line-height: 50px;
-        
+
         i {
           font-size: 18px;
           cursor: pointer;
@@ -372,7 +380,7 @@ export default {
       vertical-align: middle;
       position: relative;
       top: -16px;
-      
+
       .organization-text {
         font-weight: bold;
         font-size: 15px;

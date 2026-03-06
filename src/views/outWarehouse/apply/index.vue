@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="80px">
 
@@ -1003,7 +1003,10 @@ export default {
           totalAmt += item.amt
           totalQty += item.qty
 
-          const prod = map[item.materialId]
+          const prod = map[item.materialId] || {}
+          const fdFactory = prod.fdFactory != null ? prod.fdFactory : null
+          const fdWarehouseCategory = prod.fdWarehouseCategory != null ? prod.fdWarehouseCategory : null
+          const fdUnit = prod.fdUnit != null ? prod.fdUnit : null
 
           detailList.push({
             batchNumber: item.batchNumber,
@@ -1011,15 +1014,16 @@ export default {
             qty: item.qty,
             price: item.unitPrice,
             unitPrice: item.unitPrice,
-            materialCode: prod ? prod.code : '',
-            materialName: prod ? prod.name : '',
-            materialSpeci: prod ? prod.speci : '',
-            periodDate: prod ? prod.periodDate : '',
-            factoryName: prod && prod.fdFactory ? prod.fdFactory.factoryName : '',
-            warehouseCategoryName: prod && prod.fdWarehouseCategory ? prod.fdWarehouseCategory.warehouseCategoryName : '',
-            supplierId: prod ? prod.supplierId : '',
-            beginTime: prod ? prod.beginTime : '',
-            endTime: prod ? prod.endTime : ''
+            materialCode: (prod && prod.code) || '',
+            materialName: (prod && prod.name) || '',
+            materialSpeci: (prod && prod.speci) || '',
+            periodDate: (prod && prod.periodDate) || '',
+            factoryName: (fdFactory && fdFactory.factoryName) || '',
+            warehouseCategoryName: (fdWarehouseCategory && fdWarehouseCategory.warehouseCategoryName) || '',
+            unitName: (fdUnit && fdUnit.unitName) || '',
+            supplierId: (prod && prod.supplierId) || '',
+            beginTime: (prod && prod.beginTime) || '',
+            endTime: item.endTime != null ? item.endTime : (prod && prod.endTime) || (prod && prod.periodDate) || ''
           })
 
         })
@@ -1028,14 +1032,17 @@ export default {
 
         return {
           billNo: row.billNo,
-          departmentName: row.department ? row.department.name : '',
-          warehouseName: row.warehouse ? row.warehouse.name : '',
+          departmentName: (row.department && row.department.name) || '',
+          warehouseName: (row.warehouse && row.warehouse.name) || '',
           billDate: row.billDate,
           auditDate: row.auditDate,
           totalAmt: totalAmt,
           totalQty: totalQty,
           totalAmtConverter: totalAmtConverter,
-          detailList: detailList
+          detailList: detailList,
+          fundSource: (row.fundSource != null ? row.fundSource : '') || '',
+          createBy: (row.createBy != null ? row.createBy : '') || '',
+          outboundOperator: (row.creater && row.creater.nickName) || (row.outboundOperator != null ? row.outboundOperator : row.createBy) || '',
         }
       })
     },

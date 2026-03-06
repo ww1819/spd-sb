@@ -8,7 +8,9 @@ const user = {
     userId: '',
     avatar: '',
     roles: [],
-    permissions: []
+    permissions: [],
+    // 租户信息：customerName 用于首页展示；customerId、customerCode 供请求使用，界面不展示
+    tenant: null
   },
 
   mutations: {
@@ -29,6 +31,9 @@ const user = {
     },
     SET_PERMISSIONS: (state, permissions) => {
       state.permissions = permissions
+    },
+    SET_TENANT: (state, tenant) => {
+      state.tenant = tenant
     }
   },
 
@@ -39,8 +44,10 @@ const user = {
       const password = userInfo.password
       const code = userInfo.code
       const uuid = userInfo.uuid
+      const customerId = userInfo.customerId ? userInfo.customerId.trim() : ''
+      const customerCode = userInfo.customerCode ? userInfo.customerCode.trim() : ''
       return new Promise((resolve, reject) => {
-        login(username, password, code, uuid).then(res => {
+        login(username, password, code, uuid, customerId, customerCode).then(res => {
           setToken(res.token)
           commit('SET_TOKEN', res.token)
           resolve()
@@ -65,6 +72,11 @@ const user = {
           commit('SET_NAME', user.userName)
           commit('SET_ID', user.userId)
           commit('SET_AVATAR', avatar)
+          if (res.tenant) {
+            commit('SET_TENANT', res.tenant)
+          } else {
+            commit('SET_TENANT', null)
+          }
           resolve(res)
         }).catch(error => {
           reject(error)
@@ -79,6 +91,7 @@ const user = {
           commit('SET_TOKEN', '')
           commit('SET_ROLES', [])
           commit('SET_PERMISSIONS', [])
+          commit('SET_TENANT', null)
           removeToken()
           resolve()
         }).catch(error => {
@@ -91,6 +104,7 @@ const user = {
     FedLogOut({ commit }) {
       return new Promise(resolve => {
         commit('SET_TOKEN', '')
+        commit('SET_TENANT', null)
         removeToken()
         resolve()
       })

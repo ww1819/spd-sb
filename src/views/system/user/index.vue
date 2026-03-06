@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <el-row :gutter="20">
       <!--工作组数据-->
@@ -488,7 +488,7 @@
 
 <script>
 import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect } from "@/api/system/user";
-import { workgroupTreeSelect } from "@/api/system/workgroup";
+import { workgroupTreeSelect, listWorkGroup } from "@/api/system/workgroup";
 import { listPost } from "@/api/system/post";
 import { getConfigKey, listConfig } from "@/api/system/config";
 import { treeselect as menuTreeselect } from "@/api/system/menu";
@@ -501,6 +501,11 @@ export default {
   dicts: ['sys_normal_disable', 'sys_user_sex','warehouse_role'],
   components: { Treeselect },
   computed: {
+    /** 当前租户客户ID（设备系统下工作组下拉取 sb_work_group） */
+    customerId() {
+      const tenant = this.$store.state.user.tenant;
+      return (tenant && tenant.customerId) ? tenant.customerId : "";
+    },
     /** 科室筛选 */
     filteredDepartmentOptions() {
       const keyword = (this.departmentKeyword || "").trim();
@@ -696,6 +701,23 @@ export default {
       this.form.departmentIds = val ? checkeddepartmentIds : [];
       this.departmentIndeterminate = false;
     },
+    /** 工作组下拉选项：设备系统取 sb_work_group，否则取接口返回的 posts */
+    fillPostOptions(postsFallback) {
+      if (this.customerId) {
+        listWorkGroup(this.customerId).then(res => {
+          const list = res.data || res || [];
+          this.postOptions = list.map(g => ({
+            postId: g.groupId,
+            postName: g.groupName,
+            postCode: g.groupKey || ""
+          }));
+        }).catch(() => {
+          this.postOptions = postsFallback || [];
+        });
+      } else {
+        this.postOptions = postsFallback || [];
+      }
+    },
     /** 获取菜单树 */
     getMenuTree() {
       return menuTreeselect().then(response => {
@@ -755,8 +777,8 @@ export default {
       const userName = row.userName || (typeof row === 'string' ? row : '');
       this.authTitle = `授权 - ${userName || userId}`;
       getUser(userId).then(response => {
-        // 载入基础数据
-        this.postOptions = response.posts;
+        // 载入基础数据（设备系统下工作组取 sb_work_group 列表）
+        this.fillPostOptions(response.posts);
         this.roleOptions = response.roles;
         this.userWarehouseOptions = response.warehouses;
         this.userDepartmentOptions = response.departments;
@@ -910,11 +932,22 @@ export default {
         this.workgroupOptions = response.data;
       });
     },
-    /** 查询工作组列表 */
+    /** 查询工作组列表（设备系统取 sb_work_group） */
     getWorkgroupList() {
-      listPost({}).then(response => {
-        this.workgroupList = response.rows || [];
-      });
+      if (this.customerId) {
+        listWorkGroup(this.customerId).then(res => {
+          const list = res.data || res || [];
+          this.workgroupList = list.map(g => ({
+            postId: g.groupId,
+            postName: g.groupName,
+            postCode: g.groupKey || ""
+          }));
+        }).catch(() => { this.workgroupList = []; });
+      } else {
+        listPost({}).then(response => {
+          this.workgroupList = response.rows || [];
+        }).catch(() => { this.workgroupList = []; });
+      }
     },
     // 工作组行点击事件
     handleWorkgroupRowClick(row) {
@@ -1032,7 +1065,7 @@ export default {
     handleAdd() {
       this.reset();
       getUser().then(response => {
-        this.postOptions = response.posts;
+        this.fillPostOptions(response.posts);
         this.roleOptions = response.roles;
         this.userWarehouseOptions = response.warehouses;
         this.userDepartmentOptions = response.departments;
@@ -1057,7 +1090,7 @@ export default {
       const userId = row.userId || this.ids;
       getUser(userId).then(response => {
         this.form = response.data;
-        this.postOptions = response.posts;
+        this.fillPostOptions(response.posts);
         this.roleOptions = response.roles;
         this.userWarehouseOptions = response.warehouses;
         this.userDepartmentOptions = response.departments;

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="80px">
 
@@ -908,15 +908,22 @@ export default {
       if (print === true) {
         // 直接获取数据并触发打印
         this.getInWarehouseDetail(row).then(res => {
-          // 设置打印数据
+          // 设置打印数据，触发 order-print 渲染
           this.printRowData = res
-          // 等待组件渲染后调用 start()
+          // 等待 v-if 子组件挂载后再调用 start（双 nextTick 确保 ref 就绪）
           this.$nextTick(() => {
-            if (this.$refs['receiptOrderPrintRefAuto']) {
-              // start() 方法会直接触发浏览器打印对话框
-              this.$refs['receiptOrderPrintRefAuto'].start()
-            }
+            this.$nextTick(() => {
+              const comp = this.$refs['receiptOrderPrintRefAuto']
+              if (comp && typeof comp.start === 'function') {
+                comp.start()
+              } else {
+                this.$modal.msgError('打印组件未就绪，请稍后重试')
+              }
+            })
           })
+        }).catch(err => {
+          console.error('获取入库单详情失败:', err)
+          this.$modal.msgError(err && (err.message || err.msg) ? (err.message || err.msg) : '获取入库单详情失败，无法打印')
         })
         return
       }
@@ -1005,19 +1012,24 @@ export default {
           totalAmt += item.amt
           totalQty += item.qty
 
-          const prod = map[item.materialId]
+          const prod = map[item.materialId] || {}
+          const fdFactory = prod?.fdFactory ?? null
+          const fdWarehouseCategory = prod?.fdWarehouseCategory ?? null
+          const fdUnit = prod?.fdUnit ?? null
 
           detailList.push({
             batchNumber: item.batchNumber,
             amt: item.amt,
             qty: item.qty,
             unitPrice: item.unitPrice,
-            materialCode: prod.code,
-            materialName: prod.name,
-            materialSpeci: prod.speci,
-            periodDate: prod.periodDate,
-            factoryName: prod.fdFactory.factoryName,
-            warehouseCategoryName: prod.fdWarehouseCategory.warehouseCategoryName,
+            price: item.unitPrice,
+            materialCode: prod?.code ?? '',
+            materialName: prod?.name ?? '',
+            materialSpeci: prod?.speci ?? '',
+            periodDate: prod?.periodDate ?? '',
+            factoryName: fdFactory?.factoryName ?? '',
+            warehouseCategoryName: fdWarehouseCategory?.warehouseCategoryName ?? '',
+            unitName: fdUnit?.unitName ?? '',
           })
 
         })
@@ -1026,14 +1038,17 @@ export default {
 
         return {
           billNo: row.billNo,
-          supplierName: row.supplier.name,
-          warehouseName: row.warehouse.name,
+          supplierName: row.supplier && row.supplier.name ? row.supplier.name : '',
+          warehouseName: row.warehouse && row.warehouse.name ? row.warehouse.name : '',
           billDate: row.billDate,
           auditDate: row.auditDate,
           totalAmt: totalAmt,
           totalQty: totalQty,
           totalAmtConverter: totalAmtConverter,
-          detailList: detailList
+          detailList: detailList,
+          fundSourceAccount: row.fundSourceAccount || '',
+          createBy: row.createBy || '',
+          inboundOperator: (row.creater && row.creater.nickName) || row.inboundOperator || row.createBy || '',
         }
       })
     },
