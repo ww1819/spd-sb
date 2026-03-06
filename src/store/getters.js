@@ -6,6 +6,10 @@ const getters = {
   visitedViews: state => state.tagsView.visitedViews,
   cachedViews: state => state.tagsView.cachedViews,
   token: state => state.user.token,
+  /** 当前租户信息（SaaS 多租户，来自 getEquipmentInfo） */
+  tenant: state => state.user.tenant,
+  /** 当前租户 ID，业务请求与列表过滤使用 */
+  customerId: state => (state.user.tenant && state.user.tenant.customerId) ? state.user.tenant.customerId : '',
   avatar: state => state.user.avatar,
   name: state => state.user.name,
   introduction: state => state.user.introduction,
