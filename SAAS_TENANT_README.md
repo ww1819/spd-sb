@@ -83,3 +83,42 @@
      在“业务键 + customer_id”上建唯一约束，避免同一租户内重复、并防止误写其他租户。
 
 按上述方式改造后，spd-sb 设备系统在 SaaS 模式下的 **数据完整性** 和 **不同租户之间的数据隔离**、**不同租户用户生产数据完整性** 将得到统一保障。
+
+---
+
+## 四、租户列表存枚举 + 与租户表关联（按租户条件分支）
+
+### 4.1 代码内租户列表：TenantEnum
+
+- 租户列表存放在 **枚举** `com.spd.common.enums.TenantEnum` 中，每个枚举常量表示一种租户类型，包含：
+  - `customerId` / `customerCode`：落库与登录用
+  - `branchKey`：业务条件分支标识
+  - `displayName`：前端展示
+- 枚举的 **name** 存入表 `sb_customer.tenant_key`，实现 **租户表与代码内租户列表关联**。
+- 新增租户类型时：在 `TenantEnum` 中增加枚举项，并执行 `sb_customer` 的 `tenant_key` 字段脚本（若尚未加过列则执行一次即可）。
+
+### 4.2 新增租户：从枚举选择
+
+- **前端**：新增客户时必选「租户类型」，选项来自接口 `GET /equipment/system/customer/tenantEnumList`（即 `TenantEnum.toVoList()`）。选择后客户编号、客户编码由枚举带出（可只读）。
+- **后端**：新增时必传 `tenantKey`（枚举 name）；校验 `tenantKey` 为合法枚举且未被占用；写入时 `customer_id`/`customer_code` 取自枚举，`tenant_key` 存枚举 name。每个租户类型（枚举常量）只能创建一条客户记录。
+
+### 4.3 业务中按租户做条件分支
+
+- 注入 **TenantRegistry**（`com.spd.framework.tenant.TenantRegistry`）：
+  - `getCurrentTenantId()`：当前租户 ID
+  - `getCurrentTenantEnum()`：当前租户对应的枚举（通过 sb_customer.tenant_key 或 customerId 解析）
+  - `getBranchForCurrentTenant()`：当前租户的 **分支标识**（来自枚举的 branchKey），用于 if/switch
+  - `isCurrentTenantBranch("strategyA")`、`isCurrentTenant(TenantEnum.TENANT_A)` 等便于写分支逻辑
+- 示例：
+
+```java
+@Autowired
+private TenantRegistry tenantRegistry;
+
+if (tenantRegistry.isCurrentTenantBranch("strategyA")) {
+    // 租户 A 逻辑
+} else if (tenantRegistry.isCurrentTenant(TenantEnum.TENANT_B)) {
+    // 租户 B 逻辑
+}
+String branch = tenantRegistry.getBranchForCurrentTenant();
+```

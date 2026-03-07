@@ -48,7 +48,7 @@
           icon="el-icon-plus"
           size="small"
           @click="handleAdd"
-          v-hasPermi="['sb:system:customer:add']"
+          v-hasPermi="['hc:system:customer:list']"
         >新增</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -59,7 +59,7 @@
           size="small"
           :disabled="single"
           @click="handleUpdate"
-          v-hasPermi="['sb:system:customer:edit']"
+          v-hasPermi="['hc:system:customer:query']"
         >修改</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -70,7 +70,7 @@
           size="small"
           :disabled="multiple"
           @click="handleDelete"
-          v-hasPermi="['sb:system:customer:remove']"
+          v-hasPermi="['hc:system:customer:list']"
         >删除</el-button>
       </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
@@ -106,14 +106,14 @@
             type="text"
             icon="el-icon-edit"
             @click="handleUpdate(scope.row)"
-            v-hasPermi="['sb:system:customer:edit']"
+            v-hasPermi="['hc:system:customer:query']"
           >修改</el-button>
           <el-button
             size="mini"
-            :type="scope.row.status === '0' ? 'text' : 'text'"
+            type="text"
             icon="el-icon-video-pause"
             @click="handleChangeStatus(scope.row, '1')"
-            v-hasPermi="['sb:system:customer:edit']"
+            v-hasPermi="['hc:system:customer:query']"
             v-if="scope.row.status === '0'"
           >停用</el-button>
           <el-button
@@ -121,7 +121,7 @@
             type="text"
             icon="el-icon-video-play"
             @click="handleChangeStatus(scope.row, '0')"
-            v-hasPermi="['sb:system:customer:edit']"
+            v-hasPermi="['hc:system:customer:query']"
             v-if="scope.row.status === '1'"
           >启用</el-button>
           <el-button
@@ -129,21 +129,21 @@
             type="text"
             icon="el-icon-s-operation"
             @click="handleAssignMenu(scope.row)"
-            v-hasPermi="['sb:system:customer:edit']"
+            v-hasPermi="['hc:system:customer:query']"
           >菜单权限</el-button>
           <el-button
             size="mini"
             type="text"
             icon="el-icon-document"
             @click="handleStatusLog(scope.row)"
-            v-hasPermi="['sb:system:customer:query']"
+            v-hasPermi="['hc:system:customer:query']"
           >启停用记录</el-button>
           <el-button
             size="mini"
             type="text"
             icon="el-icon-delete"
             @click="handleDelete(scope.row)"
-            v-hasPermi="['sb:system:customer:remove']"
+            v-hasPermi="['hc:system:customer:list']"
           >删除</el-button>
         </template>
       </el-table-column>
@@ -233,7 +233,7 @@
       </div>
     </el-dialog>
 
-    <!-- 启停用记录与时间段 -->
+    <!-- 启停用记录与时间段（耗材侧 hc_customer_*） -->
     <el-dialog title="启停用记录与时间段" :visible.sync="openLog" width="800px" append-to-body>
       <div class="log-dialog-header">{{ logForm.customerName }}</div>
       <el-tabs v-model="activeLogTab">
@@ -325,14 +325,13 @@ import {
   changeCustomerStatus,
   getCustomerMenuIds,
   saveCustomerMenus,
-  getCustomerStatusLogs,
-  getCustomerPeriodLogs,
   getTenantEnumList
 } from '@/api/system/customer'
+import { getCustomerStatusLogs, getCustomerPeriodLogs } from '@/api/material/customer'
 import { treeselectForCustomerAssign } from '@/api/system/menu'
 
 export default {
-  name: 'Customer',
+  name: 'HcCustomer',
   dicts: ['sys_normal_disable'],
   data() {
     return {
@@ -351,17 +350,17 @@ export default {
       statusForm: { customerId: '', customerName: '', status: '0', statusChangeReason: '' },
       statusRules: {
         statusChangeReason: [{
-        required: true,
-        validator: (rule, value, cb) => {
-          if (!value || !String(value).trim()) {
-            const msg = this.statusForm.status === '1' ? '请输入停用原因' : '请输入启用原因'
-            cb(new Error(msg))
-          } else {
-            cb()
-          }
-        },
-        trigger: 'blur'
-      }]
+          required: true,
+          validator: (rule, value, cb) => {
+            if (!value || !String(value).trim()) {
+              const msg = this.statusForm.status === '1' ? '请输入停用原因' : '请输入启用原因'
+              cb(new Error(msg))
+            } else {
+              cb()
+            }
+          },
+          trigger: 'blur'
+        }]
       },
       statusDialogTitle: '启停用客户',
       logForm: { customerId: '', customerName: '' },
@@ -502,7 +501,6 @@ export default {
       this.resetForm('queryForm')
       this.handleQuery()
     },
-    /** 分配菜单 */
     handleAssignMenu(row) {
       this.menuForm = { customerId: row.customerId, customerName: row.customerName }
       this.openMenu = true
@@ -538,7 +536,6 @@ export default {
     handleMenuTreeConnect(v) {
       this.menuCheckStrictly = v
     },
-    /** 启停用操作 */
     handleChangeStatus(row, status) {
       this.statusForm = {
         customerId: row.customerId,
@@ -560,7 +557,7 @@ export default {
         })
       })
     },
-    /** 启停用记录与时间段 */
+    /** 启停用记录与时间段：耗材侧接口 hc_customer_status_log / hc_customer_period_log */
     handleStatusLog(row) {
       this.logForm = { customerId: row.customerId, customerName: row.customerName }
       this.activeLogTab = 'statusLog'

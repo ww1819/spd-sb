@@ -1,5 +1,13 @@
 import request from '@/utils/request'
 
+// 代码内租户列表（TenantEnum），新增客户时从此列表选择以关联租户表与枚举
+export function getTenantEnumList() {
+  return request({
+    url: '/equipment/system/customer/tenantEnumList',
+    method: 'get'
+  })
+}
+
 // 客户列表
 export function listCustomer(query) {
   return request({
