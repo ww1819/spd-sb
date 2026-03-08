@@ -45,10 +45,10 @@ export function delCaigoujihua(id) {
   })
 }
 
-// 审核入库
+// 审核入库（与后端 PUT /caigou/jihua/audit 一致）
 export function auditCaigoujihua(data) {
   return request({
-    url: '/caigou/jihua/check',
+    url: '/caigou/jihua/audit',
     method: 'put',
     data: data
   })

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <div class="form-fields-container">
       <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="80px">
@@ -252,8 +252,10 @@
 
           <div v-show="action">
             <el-col :span="1.5">
-  <!--            <el-button type="primary" icon="el-icon-plus" size="small" @click="handleAddStkIoBillEntry">添加</el-button>-->
-              <el-button type="primary" icon="el-icon-plus" size="small" @click="nameBtn">添加</el-button>
+              <el-button type="primary" icon="el-icon-plus" size="small" @click="nameBtn">从库存选择(盘亏)</el-button>
+            </el-col>
+            <el-col :span="1.5">
+              <el-button type="success" icon="el-icon-plus" size="small" @click="handleAddStkIoBillEntry">新增盘盈明细</el-button>
             </el-col>
             <el-col :span="1.5">
               <el-button type="danger" icon="el-icon-delete" size="small" @click="handleDeleteStkIoBillEntry">删除</el-button>
@@ -269,15 +271,17 @@
           <el-table-column label="序号" align="center" prop="index" width="50" show-overflow-tooltip resizable/>
           <el-table-column label="耗材" prop="materialId" width="120" show-overflow-tooltip resizable>
             <template slot-scope="scope">
-<!--              <SelectMaterial v-model="scope.row.materialId" :disabled="isShow" />-->
-              <SelectMaterial v-model="scope.row.materialId" :value2="isShow" />
+              <SelectMaterial v-model="scope.row.materialId" :value2="isRowFromStock(scope.row) && isShow" />
             </template>
           </el-table-column>
-
+          <el-table-column label="供应商" prop="supplerId" width="160" show-overflow-tooltip resizable>
+            <template slot-scope="scope">
+              <SelectSupplier v-model="scope.row.supplerId" :value2="isRowFromStock(scope.row)" />
+            </template>
+          </el-table-column>
           <el-table-column label="单价" prop="unitPrice" width="120" show-overflow-tooltip resizable>
             <template slot-scope="scope">
-<!--              <el-input v-model="scope.row.unitPrice" placeholder="请输入单价" />-->
-              <el-input v-model="scope.row.unitPrice" type='number' :disabled="true"
+              <el-input v-model="scope.row.unitPrice" type="number" :disabled="isRowFromStock(scope.row)"
                         @input="priceChange(scope.row)" placeholder="请输入单价" />
             </template>
           </el-table-column>
@@ -295,7 +299,7 @@
           </el-table-column>
           <el-table-column label="批次号" prop="batchNo" width="240" show-overflow-tooltip resizable>
             <template slot-scope="scope">
-              <el-input v-model="scope.row.batchNo" :disabled="true" placeholder="请输入批次号" />
+              <el-input v-model="scope.row.batchNo" :disabled="true" placeholder="系统生成" />
             </template>
           </el-table-column>
 
@@ -361,11 +365,12 @@ import SelectDepartment from '@/components/SelectModel/SelectDepartment';
 import SelectUser from '@/components/SelectModel/SelectUser';
 import RightToolbar from "@/components/RightToolbar";
 import SelectInventory from '@/components/SelectModel/SelectInventory';
+import SelectSupplier from '@/components/SelectModel/SelectSupplier';
 
 export default {
   name: "Warehouse",
   dicts: ['biz_status','bill_type'],
-  components: {SelectMaterial,SelectWarehouse,SelectDepartment,SelectUser,SelectInventory,RightToolbar},
+  components: {SelectMaterial,SelectWarehouse,SelectDepartment,SelectUser,SelectInventory,SelectSupplier,RightToolbar},
   data() {
     return {
       // 遮罩层
@@ -591,6 +596,29 @@ export default {
     },
     /** 提交按钮 */
     submitForm() {
+      const entryList = this.stkIoBillEntryList || [];
+      for (let i = 0; i < entryList.length; i++) {
+        const row = entryList[i];
+        const isGain = !this.isRowFromStock(row);
+        if (isGain) {
+          if (!row.materialId) {
+            this.$modal.msgError('第' + (i + 1) + '行盘盈明细请选择耗材');
+            return;
+          }
+          if (!row.supplerId) {
+            this.$modal.msgError('第' + (i + 1) + '行盘盈明细请选择供应商');
+            return;
+          }
+          if (row.unitPrice == null || row.unitPrice === '' || Number(row.unitPrice) < 0) {
+            this.$modal.msgError('第' + (i + 1) + '行盘盈明细请填写有效单价');
+            return;
+          }
+          if (row.qty == null || row.qty === '' || Number(row.qty) <= 0) {
+            this.$modal.msgError('第' + (i + 1) + '行盘盈明细请填写有效数量');
+            return;
+          }
+        }
+      }
       this.$refs["form"].validate(valid => {
         if (valid) {
           this.form.stkIoBillEntryList = this.stkIoBillEntryList;
@@ -624,20 +652,26 @@ export default {
     rowStkIoBillEntryIndex({ row, rowIndex }) {
       row.index = rowIndex + 1;
     },
-    /** 盘点明细添加按钮操作 */
+    /** 是否来自库存的行（有 kcNo 为盘亏，无 kcNo 为盘盈新增） */
+    isRowFromStock(row) {
+      return row.kcNo != null && row.kcNo !== '';
+    },
+    /** 盘点明细添加按钮操作（新增盘盈明细，需填写耗材、供应商、单价等） */
     handleAddStkIoBillEntry() {
-      let obj = {};
-      obj.materialId = "";
-      obj.unitPrice = "";
-      obj.qty = "";
-      obj.price = "";
-      obj.amt = "";
-      obj.batchNo = "";
-      obj.batchNumber = "";
-      obj.beginTime = "";
-      obj.endTime = "";
-      obj.remark = "";
-
+      let obj = {
+        materialId: null,
+        supplerId: null,
+        unitPrice: null,
+        qty: null,
+        price: null,
+        amt: null,
+        batchNo: '',
+        batchNumber: '',
+        beginTime: '',
+        endTime: '',
+        remark: '',
+        kcNo: null
+      };
       this.stkIoBillEntryList.push(obj);
     },
     /** 盘点明细删除按钮操作 */

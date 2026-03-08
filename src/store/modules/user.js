@@ -50,6 +50,12 @@ const user = {
         login(username, password, code, uuid, customerId, customerCode).then(res => {
           setToken(res.token)
           commit('SET_TOKEN', res.token)
+          // 登录响应中带回租户信息，立即写入会话，供请求头 X-Tenant-Id 与租户数据隔离使用（仿照耗材系统）
+          if (res.tenant) {
+            commit('SET_TENANT', res.tenant)
+          } else {
+            commit('SET_TENANT', null)
+          }
           resolve()
         }).catch(error => {
           reject(error)
