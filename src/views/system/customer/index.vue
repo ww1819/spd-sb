@@ -99,7 +99,7 @@
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="340" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="420" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button
             size="mini"
@@ -131,6 +131,20 @@
             @click="handleAssignMenu(scope.row)"
             v-hasPermi="['sb:system:customer:edit']"
           >菜单权限</el-button>
+          <el-button
+            size="mini"
+            type="text"
+            icon="el-icon-refresh-left"
+            @click="handleResetEquipment(scope.row)"
+            v-hasPermi="['sb:system:customer:edit']"
+          >设备功能重置</el-button>
+          <el-button
+            size="mini"
+            type="text"
+            icon="el-icon-refresh-right"
+            @click="handleResetMaterial(scope.row)"
+            v-hasPermi="['sb:system:customer:edit']"
+          >耗材功能重置</el-button>
           <el-button
             size="mini"
             type="text"
@@ -327,7 +341,9 @@ import {
   saveCustomerMenus,
   getCustomerStatusLogs,
   getCustomerPeriodLogs,
-  getTenantEnumList
+  getTenantEnumList,
+  resetEquipmentFunctions,
+  resetMaterialFunctions
 } from '@/api/system/customer'
 import { treeselectForCustomerAssign } from '@/api/system/menu'
 
@@ -573,6 +589,26 @@ export default {
       getCustomerPeriodLogs(row.customerId).then(res => {
         this.periodLogList = res.data || []
       })
+    },
+    /** 设备功能重置 */
+    handleResetEquipment(row) {
+      const name = row.customerName || row.customerId
+      this.$modal.confirm('是否确认将客户“' + name + '”的设备功能重置？将重置客户菜单权限、super 组及 super_01 的菜单权限为系统设置下非平台管理功能；若 super 组或 super_01 不存在则会创建。').then(() => {
+        return resetEquipmentFunctions(row.customerId)
+      }).then(() => {
+        this.$modal.msgSuccess('设备功能重置成功')
+        this.getList()
+      }).catch(() => {})
+    },
+    /** 耗材功能重置 */
+    handleResetMaterial(row) {
+      const name = row.customerName || row.customerId
+      this.$modal.confirm('是否确认将客户“' + name + '”的耗材功能重置？将重置耗材客户菜单权限、super 岗位及 super_01 的菜单权限为系统设置下非平台管理功能；若 super 岗位或 super_01 不存在则会创建。').then(() => {
+        return resetMaterialFunctions(row.customerId)
+      }).then(() => {
+        this.$modal.msgSuccess('耗材功能重置成功')
+        this.getList()
+      }).catch(() => {})
     },
     submitMenuForm() {
       const tree = this.$refs.menuTree
