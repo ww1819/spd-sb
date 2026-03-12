@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <div class="form-fields-container">
       <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="80px">
@@ -617,6 +617,18 @@ export default {
     submitForm() {
       this.$refs["form"].validate(valid => {
         if (valid) {
+          const validEntries = this.depPurchaseApplyEntryList.filter(item => item.materialId);
+          if (validEntries.length === 0) {
+            this.$modal.msgError("请至少添加一条有效明细（选择耗材）");
+            return;
+          }
+          const invalidQty = this.depPurchaseApplyEntryList.filter(item =>
+            item.materialId && (item.qty == null || item.qty === '' || Number(item.qty) <= 0)
+          );
+          if (invalidQty.length > 0) {
+            this.$modal.msgError("存在明细数量为空或0，请填写有效数量后再保存。");
+            return;
+          }
           this.form.depPurchaseApplyEntryList = this.depPurchaseApplyEntryList;
           if (this.form.id != null) {
             updatePurchase(this.form).then(response => {

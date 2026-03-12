@@ -54,6 +54,15 @@ export function auditCaigoujihua(data) {
   })
 }
 
+// 根据计划明细ID查询科室申购单明细
+export function getJihuaApplyDetails(entryId) {
+  return request({
+    url: '/caigou/jihua/applyDetails',
+    method: 'get',
+    params: { entryId }
+  })
+}
+
 
 
 

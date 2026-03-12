@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="80px">
       <el-row class="query-row-left">
@@ -1290,6 +1290,12 @@ export default {
     submitForm() {
       this.$refs["form"].validate(valid => {
         if (valid) {
+          const list = this.stkIoBillEntryList || [];
+          const invalidQty = list.filter(e => e.materialId && (e.qty == null || e.qty === '' || Number(e.qty) <= 0));
+          if (invalidQty.length > 0) {
+            this.$modal.msgError("存在明细数量为空或0，请填写有效采购数量后再保存。");
+            return;
+          }
           this.form.purchasePlanEntryList = this.stkIoBillEntryList;
           // 保存时保持原有状态，不自动改变状态
           // 新增时如果没有设置状态，则默认为"未提交"（0）
