@@ -593,7 +593,7 @@ export default {
     /** 设备功能重置 */
     handleResetEquipment(row) {
       const name = row.customerName || row.customerId
-      this.$modal.confirm('是否确认将客户“' + name + '”的设备功能重置？将重置客户菜单权限、super 组及 super_01 的菜单权限为系统设置下非平台管理功能；若 super 组或 super_01 不存在则会创建。').then(() => {
+      this.$modal.confirm('是否确认将客户“' + name + '”的设备功能重置？将重置客户菜单权限、super 组及 super_01 的菜单权限为系统设置下非平台管理功能，并同步客户68分类（以标准68分类为蓝本）；若 super 组或 super_01 不存在则会创建。').then(() => {
         return resetEquipmentFunctions(row.customerId)
       }).then(() => {
         this.$modal.msgSuccess('设备功能重置成功')
