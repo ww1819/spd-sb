@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container department-container">
     <el-row :gutter="20">
       <!-- 左侧科室列表 -->
@@ -6,6 +6,13 @@
         <el-card class="department-card">
           <div slot="header" class="department-header">
             <span>科室</span>
+            <el-button
+              type="primary"
+              icon="el-icon-plus"
+              size="mini"
+              @click="handleAdd"
+              v-hasPermi="['foundation:depart:add']"
+            >新增科室</el-button>
           </div>
           <div class="department-list">
             <div
@@ -41,6 +48,17 @@
               <el-input
                 v-model="queryParams.name"
                 placeholder="请输入科室名称"
+                clearable
+                @keyup.enter.native="handleQuery"
+                style="width: 150px"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="拼音简码" prop="referredName" label-width="100px">
+              <el-input
+                v-model="queryParams.referredName"
+                placeholder="请输入拼音简码"
                 clearable
                 @keyup.enter.native="handleQuery"
                 style="width: 150px"
@@ -96,6 +114,17 @@
       </el-col>
       <el-col :span="1.5">
         <el-button
+          type="info"
+          plain
+          icon="el-icon-refresh"
+          size="small"
+          :disabled="multiple && (!departList || departList.length === 0)"
+          @click="handleRefreshReferred"
+          v-hasPermi="['foundation:depart:edit']"
+        >刷新简码</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
           type="primary"
           icon="el-icon-search"
           size="small"
@@ -110,6 +139,7 @@
       <el-table-column label="序号" align="center" prop="index" width="80" show-overflow-tooltip />
       <el-table-column label="科室编码" align="center" prop="code" width="150" show-overflow-tooltip />
       <el-table-column label="科室名称" align="center" prop="name" min-width="200" show-overflow-tooltip />
+      <el-table-column label="拼音简码" align="center" prop="referredName" width="120" show-overflow-tooltip />
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="150" fixed="right">
         <template slot-scope="scope">
           <el-button
@@ -159,6 +189,11 @@
                 <el-input v-model="form.name" placeholder="请输入科室名称" />
               </el-form-item>
             </el-col>
+            <el-col :span="6">
+              <el-form-item label="拼音简码" prop="referredName">
+                <el-input v-model="form.referredName" placeholder="名称首字母，可留空由刷新简码生成" />
+              </el-form-item>
+            </el-col>
           </el-row>
         </el-form>
         <div class="modal-footer-fixed">
@@ -171,7 +206,7 @@
 </template>
 
 <script>
-import { listdepart, getdepart, deldepart, adddepart, updatedepart } from "@/api/foundation/depart";
+import { listdepart, getdepart, deldepart, adddepart, updatedepart, updateReferred } from "@/api/foundation/depart";
 
 export default {
   name: "depart",
@@ -205,6 +240,7 @@ export default {
         pageSize: 10,
         code: null,
         name: null,
+        referredName: null,
       },
       // 表单参数
       form: {},
@@ -263,6 +299,7 @@ export default {
         id: null,
         code: null,
         name: null,
+        referredName: null,
         createBy: null,
         createTime: null,
         updateBy: null,
@@ -296,7 +333,9 @@ export default {
     /** 修改按钮操作 */
     handleUpdate(row) {
       this.reset();
-      const id = row.id || this.ids
+      const rawId = row && row.id != null ? row.id : this.ids;
+      const id = Array.isArray(rawId) ? (rawId.length > 0 ? rawId[0] : null) : rawId;
+      if (id == null) return;
       getdepart(id).then(response => {
         this.form = response.data;
         this.open = true;
@@ -327,9 +366,10 @@ export default {
     },
     /** 删除按钮操作 */
     handleDelete(row) {
-      const ids = row.id || this.ids;
-      this.$modal.confirm('是否确认删除科室编号为"' + ids + '"的数据项？').then(function() {
-        return deldepart(ids);
+      let ids = row.id != null ? row.id : this.ids;
+      const idStr = Array.isArray(ids) ? ids.join(',') : String(ids);
+      this.$modal.confirm('是否确认删除所选科室？').then(() => {
+        return deldepart(idStr);
       }).then(() => {
         this.getList();
         this.getAllDepartmentList();
@@ -344,6 +384,21 @@ export default {
       this.download('foundation/depart/export', {
         ...this.queryParams
       }, `depart_${new Date().getTime()}.xlsx`)
+    },
+    /** 刷新简码：按名称批量生成拼音简码 */
+    handleRefreshReferred() {
+      const ids = this.ids && this.ids.length > 0 ? this.ids : this.departList.map(r => r.id);
+      if (!ids || ids.length === 0) {
+        this.$modal.msgWarning("请先勾选要刷新简码的科室，或当前页有数据");
+        return;
+      }
+      this.$modal.confirm("确认按科室名称批量刷新所选科室的拼音简码吗？").then(() => {
+        return updateReferred(ids);
+      }).then(() => {
+        this.$modal.msgSuccess("刷新简码成功");
+        this.getList();
+        this.getAllDepartmentList();
+      }).catch(() => {});
     }
   }
 };
@@ -407,6 +462,9 @@ export default {
 }
 
 .department-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-weight: bold;
   font-size: 14px;
 }

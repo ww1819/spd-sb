@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch">
       <el-form-item label="菜单名称" prop="menuName">
@@ -73,6 +73,11 @@
       <el-table-column prop="status" label="状态" width="80">
         <template slot-scope="scope">
           <dict-tag :options="dict.type.sys_normal_disable" :value="scope.row.status"/>
+        </template>
+      </el-table-column>
+      <el-table-column label="默认对客户开放" align="center" width="120">
+        <template slot-scope="scope">
+          <span>{{ scope.row.defaultOpenToCustomer === '1' || scope.row.defaultOpenToCustomer === 1 ? '是' : '否' }}</span>
         </template>
       </el-table-column>
       <el-table-column label="创建时间" align="center" prop="createTime">
@@ -268,6 +273,20 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item prop="defaultOpenToCustomer">
+              <span slot="label">
+                <el-tooltip content="选择是则设备功能重置时该菜单会默认授权给客户、管理员组、管理员用户" placement="top">
+                <i class="el-icon-question"></i>
+                </el-tooltip>
+                默认对客户开放
+              </span>
+              <el-radio-group v-model="form.defaultOpenToCustomer">
+                <el-radio label="0">否</el-radio>
+                <el-radio label="1">是</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
         </el-row>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -380,7 +399,8 @@ export default {
         isFrame: "1",
         isCache: "0",
         visible: "0",
-        status: "0"
+        status: "0",
+        defaultOpenToCustomer: "0"
       };
       this.resetForm("form");
     },

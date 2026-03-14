@@ -130,7 +130,7 @@
             icon="el-icon-s-operation"
             @click="handleAssignMenu(scope.row)"
             v-hasPermi="['sb:system:customer:edit']"
-          >菜单权限</el-button>
+          >设备客户权限</el-button>
           <el-button
             size="mini"
             type="text"
@@ -296,9 +296,12 @@
       </div>
     </el-dialog>
 
-    <!-- 分配菜单权限 -->
-    <el-dialog title="客户菜单权限" :visible.sync="openMenu" width="480px" append-to-body>
+    <!-- 设备客户权限：维护客户可用的设备菜单 -->
+    <el-dialog title="设备客户权限" :visible.sync="openMenu" width="480px" append-to-body>
       <el-form label-width="80px">
+        <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px;">
+          勾选该客户在设备系统中可用的菜单；未勾选的菜单该客户下用户不可见。
+        </el-alert>
         <el-form-item label="客户名称">
           <el-input v-model="menuForm.customerName" disabled />
         </el-form-item>

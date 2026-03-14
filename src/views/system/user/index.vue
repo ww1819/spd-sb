@@ -231,7 +231,7 @@
               <el-row>
                 <el-col :span="4">
                   <el-form-item label="工作组">
-                    <el-select v-model="form.deptId" placeholder="请选择工作组" clearable style="width: 100%;">
+                    <el-select v-model="selectedPostId" placeholder="请选择工作组" clearable style="width: 100%;">
                       <el-option
                         v-for="item in postOptions"
                         :key="item.postId"
@@ -561,6 +561,8 @@ export default {
       dateRange: [],
       // 岗位选项
       postOptions: [],
+      // 选中的工作组ID（与 form.deptId 分离，避免 UUID 被当作部门 ID 提交导致 Long 转换异常）
+      selectedPostId: undefined,
       // 角色选项
       roleOptions: [],
       // 仓库选项
@@ -592,14 +594,15 @@ export default {
         children: "children",
         label: "label"
       },
-      // 查询参数
+      // 查询参数（deptId 仅用于部门 Long；工作组筛选用 workgroupPostId 避免 UUID 被当作 deptId 提交）
       queryParams: {
         pageNum: 1,
         pageSize: 10,
         userName: undefined,
         phonenumber: undefined,
         status: undefined,
-        deptId: undefined
+        deptId: undefined,
+        workgroupPostId: undefined
       },
       // 列信息
       columns: [
@@ -676,7 +679,11 @@ export default {
     /** 查询用户列表 */
     getList() {
       this.loading = true;
-      listUser(this.addDateRange(this.queryParams, this.dateRange)).then(response => {
+      const params = this.addDateRange({ ...this.queryParams }, this.dateRange);
+      if (this.customerId) {
+        params.customerId = this.customerId;
+      }
+      listUser(params).then(response => {
           this.userList = response.rows;
           this.total = response.total;
           this.loading = false;
@@ -949,15 +956,17 @@ export default {
         }).catch(() => { this.workgroupList = []; });
       }
     },
-    // 工作组行点击事件
+    // 工作组行点击事件（用 workgroupPostId 筛选，不写 deptId 避免 UUID 导致后端 Long 转换异常）
     handleWorkgroupRowClick(row) {
       this.currentWorkgroupId = row.postId;
-      this.queryParams.deptId = row.postId;
+      this.queryParams.workgroupPostId = row.postId;
+      this.queryParams.deptId = undefined;
       this.handleQuery();
     },
     // 工作组表头点击事件 - 显示所有用户
     handleWorkgroupHeaderClick() {
       this.currentWorkgroupId = undefined;
+      this.queryParams.workgroupPostId = undefined;
       this.queryParams.deptId = undefined;
       this.handleQuery();
     },
@@ -1000,6 +1009,7 @@ export default {
     },
     // 表单重置
     reset() {
+      this.selectedPostId = undefined;
       this.form = {
         userId: undefined,
         deptId: undefined,
@@ -1035,6 +1045,7 @@ export default {
       this.dateRange = [];
       this.resetForm("queryForm");
       this.queryParams.deptId = undefined;
+      this.queryParams.workgroupPostId = undefined;
       this.currentWorkgroupId = undefined;
       this.handleQuery();
     },
@@ -1095,10 +1106,8 @@ export default {
         this.userWarehouseOptions = response.warehouses;
         this.userDepartmentOptions = response.departments;
 
-        // 设置工作组（如果有postIds数组，取第一个值）
-        if (response.postIds && response.postIds.length > 0) {
-          this.$set(this.form, "deptId", response.postIds[0]);
-        }
+        // 工作组使用独立字段，不写入 form.deptId（后端 deptId 为 Long，工作组 ID 为 UUID）
+        this.selectedPostId = (response.postIds && response.postIds.length > 0) ? response.postIds[0] : undefined;
         this.$set(this.form, "roleIds", response.roleIds);
         this.$set(this.form, "warehouseIds", response.warehouseIds);
         this.$set(this.form, "departmentIds", response.departmentIds);
@@ -1193,9 +1202,9 @@ export default {
             this.form.roleIds = [];
           }
           
-          // 将工作组 deptId 转换为 postIds 数组
-          if (this.form.deptId != null && this.form.deptId !== undefined && this.form.deptId !== '') {
-            this.form.postIds = [this.form.deptId];
+          // 将选中的工作组写入 postIds（不使用 form.deptId，避免 UUID 被当作 Long 提交）
+          if (this.selectedPostId != null && this.selectedPostId !== undefined && this.selectedPostId !== '') {
+            this.form.postIds = [this.selectedPostId];
           } else {
             this.form.postIds = [];
           }

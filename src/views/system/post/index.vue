@@ -41,7 +41,7 @@
           icon="el-icon-plus"
           size="small"
           @click="handleAdd"
-          v-hasPermi="['system:post:add']"
+          v-hasPermi="['system:post:add', 'system:post:list', 'sb:system:workgroup:add']"
         >新增</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -52,7 +52,7 @@
           size="small"
           :disabled="single"
           @click="handleUpdate"
-          v-hasPermi="['system:post:edit']"
+          v-hasPermi="['system:post:edit', 'system:post:list', 'sb:system:workgroup:edit']"
         >修改</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -63,7 +63,7 @@
           size="small"
           :disabled="multiple"
           @click="handleDelete"
-          v-hasPermi="['system:post:remove']"
+          v-hasPermi="['system:post:remove', 'system:post:list', 'sb:system:workgroup:remove']"
         >删除</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -73,7 +73,7 @@
           icon="el-icon-download"
           size="small"
           @click="handleExport"
-          v-hasPermi="['system:post:export']"
+          v-hasPermi="['system:post:export', 'system:post:list', 'sb:system:workgroup:query']"
         >导出</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -83,7 +83,7 @@
           icon="el-icon-refresh"
           size="small"
           @click="handleSyncWarehouse"
-          v-hasPermi="['system:post:sync']"
+          v-hasPermi="['system:post:sync', 'system:post:list', 'sb:system:workgroup:edit']"
         >同步仓库</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -93,7 +93,7 @@
           icon="el-icon-refresh"
           size="small"
           @click="handleSyncDepartment"
-          v-hasPermi="['system:post:sync']"
+          v-hasPermi="['system:post:sync', 'system:post:list', 'sb:system:workgroup:edit']"
         >同步科室</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -103,7 +103,7 @@
           icon="el-icon-refresh"
           size="small"
           @click="handleSyncMenu"
-          v-hasPermi="['system:post:sync']"
+          v-hasPermi="['system:post:sync', 'system:post:list', 'sb:system:workgroup:edit']"
         >同步菜单</el-button>
       </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
@@ -132,21 +132,21 @@
             type="text"
             icon="el-icon-edit"
             @click="handleUpdate(scope.row)"
-            v-hasPermi="['system:post:edit']"
+            v-hasPermi="['system:post:edit', 'system:post:list', 'sb:system:workgroup:edit']"
           >修改</el-button>
           <el-button
             size="small"
             type="text"
             icon="el-icon-delete"
             @click="handleDelete(scope.row)"
-            v-hasPermi="['system:post:remove']"
+            v-hasPermi="['system:post:remove', 'system:post:list', 'sb:system:workgroup:remove']"
           >删除</el-button>
           <el-button
             size="small"
             type="text"
             icon="el-icon-s-check"
             @click="handleAuth(scope.row)"
-            v-hasPermi="['system:post:edit']"
+            v-hasPermi="['system:post:edit', 'system:post:list', 'sb:system:workgroup:edit']"
           >授权</el-button>
         </template>
       </el-table-column>
@@ -309,7 +309,7 @@ export default {
       return (this.userDepartmentOptions || []).filter(item =>
         (item.name || "").includes(keyword)
       );
-    }
+    },
   },
   data() {
     return {
@@ -780,16 +780,13 @@ export default {
         this.$nextTick(() => {
           this.$nextTick(() => {
             if (this.$refs.authMenuTree) {
-              const menuIds = (this.authForm.menuIds || []).map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
-              console.log('设置菜单树选中状态 - menuIds:', menuIds);
+              const menuIds = (this.authForm.menuIds || []).map(id => String(id)).filter(Boolean);
               this.$refs.authMenuTree.setCheckedKeys(menuIds);
               this.updateAuthMenuCheckState();
-              // 如果第一次设置失败，延迟再试一次
               setTimeout(() => {
                 if (this.$refs.authMenuTree) {
                   const currentKeys = this.$refs.authMenuTree.getCheckedKeys();
-                  if (!currentKeys || currentKeys.length === 0) {
-                    console.log('菜单树选中状态未设置成功，重试设置');
+                  if (currentKeys.length !== menuIds.length && menuIds.length > 0) {
                     this.$refs.authMenuTree.setCheckedKeys(menuIds);
                     this.updateAuthMenuCheckState();
                   }
