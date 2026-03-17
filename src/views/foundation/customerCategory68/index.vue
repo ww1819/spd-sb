@@ -9,7 +9,7 @@
             node-key="id"
             highlight-current
             @node-click="handleNodeClick"
-            :default-expanded-keys="defaultExpandedKeys"
+            default-expand-all
           >
             <span slot-scope="{ node }" class="custom-tree-node">
               <i class="el-icon-folder-opened" />
@@ -84,7 +84,7 @@
     </el-dialog>
 
     <!-- 操作记录 -->
-    <el-dialog title="客户68分类操作记录" :visible.sync="openLog" width="800px" append-to-body>
+    <el-dialog title="医疗器械68分类操作记录" :visible.sync="openLog" width="800px" append-to-body>
       <el-table :data="logList" border size="small" max-height="400">
         <el-table-column label="操作类型" width="90">
           <template slot-scope="scope">
@@ -123,7 +123,6 @@ export default {
     return {
       treeData: [],
       treeProps: { label: 'category68Name', children: 'children' },
-      defaultExpandedKeys: ['root'],
       loading: true,
       ids: [],
       single: true,
@@ -160,33 +159,22 @@ export default {
       }).catch(() => { this.loading = false })
       treeselectCustomerCategory68().then(res => {
         const list = res.data || []
-        const tree = this.buildTree(list, null)
+        // 后端已返回树形结构（含 children），直接作为根节点的子节点，无需前端再 buildTree
         this.treeData = [{
           id: 'root',
           category68Name: '全部68分类',
-          children: tree
+          children: list
         }]
-        this.defaultExpandedKeys = ['root']
-      })
-    },
-    buildTree(list, parentId) {
-      if (!list || !list.length) return []
-      return list.filter(item => {
-        const p = item.parentId
-        const match = parentId === null ? (p == null || p === '') : (p != null && p === parentId)
-        if (match) {
-          item.children = this.buildTree(list, item.id)
-          return true
-        }
-        return false
       })
     },
     handleNodeClick(data) {
-      if (data.id !== 'root') {
+      if (data.id === 'root') {
+        delete this.queryParams.refCategory68Id
+      } else {
         this.queryParams.refCategory68Id = data.refCategory68Id
-        this.queryParams.pageNum = 1
-        this.getList()
       }
+      this.queryParams.pageNum = 1
+      this.getList()
     },
     handleSync() {
       this.$modal.confirm('是否以标准68分类为蓝本同步？将更新已有数据并新增缺失项。').then(() => {
@@ -202,7 +190,7 @@ export default {
       getCustomerCategory68(id).then(res => {
         this.form = res.data || {}
         this.open = true
-        this.title = '修改客户68分类'
+        this.title = '修改医疗器械68分类'
       })
     },
     submitForm() {
@@ -218,7 +206,7 @@ export default {
     handleDelete(row) {
       const id = (row && row.id) || this.ids[0]
       const name = (row && row.category68Name) || id
-      this.$modal.confirm('是否确认删除客户68分类“' + name + '”？').then(() => {
+      this.$modal.confirm('是否确认删除医疗器械68分类“' + name + '”？').then(() => {
         return delCustomerCategory68(id)
       }).then(() => {
         this.$modal.msgSuccess('删除成功')
@@ -242,6 +230,7 @@ export default {
     },
     resetQuery() {
       this.resetForm('queryForm')
+      delete this.queryParams.refCategory68Id
       this.handleQuery()
     },
     cancel() {

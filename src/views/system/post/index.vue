@@ -192,9 +192,12 @@
     </el-dialog>
 
     <!-- 授权弹窗 -->
-    <el-dialog :title="authTitle || '授权'" :visible.sync="authOpen" width="700px" append-to-body>
+    <el-dialog :title="authTitle || '授权'" :visible.sync="authOpen" width="720px" append-to-body>
     <el-tabs type="card">
       <el-tab-pane label="菜单权限">
+        <el-alert type="info" :closable="false" show-icon style="margin-bottom: 8px; font-size: 12px;">
+          勾选菜单及按钮权限；展开节点可看到各菜单下的【按钮】权限（如新增、修改、删除）。
+        </el-alert>
         <div style="margin-bottom: 8px;">
           <el-button size="mini" @click="handleAuthMenuAll(true)">全选</el-button>
           <el-button size="mini" @click="handleAuthMenuAll(false)">取消</el-button>
@@ -206,13 +209,14 @@
           node-key="id"
           show-checkbox
           :check-strictly="false"
-          :default-expand-all="false"
+          :default-expand-all="true"
           :expand-on-click-node="false"
           :check-on-click-node="true"
           @check="handleAuthMenuCheck"
           style="max-height: 300px; overflow-y: auto;"
         >
           <span class="custom-tree-node" slot-scope="{ node, data }">
+            <span v-if="data.menuType === 'F'" class="tree-node-btn">【按钮】</span>
             <span>{{ node.label }}</span>
           </span>
         </el-tree>
@@ -821,6 +825,7 @@ export default {
       return nodes.map(m => ({
         id: m.menuId || m.id,
         label: m.menuName || m.label,
+        menuType: m.menuType,
         children: this.mapMenuTree(m.children || [])
       }));
     },
@@ -934,6 +939,11 @@ export default {
 </script>
 
 <style scoped>
+.tree-node-btn {
+  color: #909399;
+  font-size: 12px;
+  margin-right: 4px;
+}
 /* 授权复选框容器样式 */
 .auth-checkbox-container {
   max-height: 300px;

@@ -296,11 +296,11 @@
       </div>
     </el-dialog>
 
-    <!-- 设备客户权限：维护客户可用的设备菜单 -->
-    <el-dialog title="设备客户权限" :visible.sync="openMenu" width="480px" append-to-body>
+    <!-- 设备客户权限：维护客户可用的设备菜单（含目录、菜单及按钮权限） -->
+    <el-dialog title="设备客户权限" :visible.sync="openMenu" width="520px" append-to-body>
       <el-form label-width="80px">
         <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px;">
-          勾选该客户在设备系统中可用的菜单；未勾选的菜单该客户下用户不可见。
+          勾选该客户在设备系统中可用的菜单及按钮权限；展开节点可看到各菜单下的【按钮】权限（如新增、修改、删除），未勾选的该客户下用户不可见。
         </el-alert>
         <el-form-item label="客户名称">
           <el-input v-model="menuForm.customerName" disabled />
@@ -321,7 +321,12 @@
             :default-expand-all="menuExpand"
             empty-text="加载中，请稍候"
             :props="{ label: 'menuName', children: 'children' }"
-          />
+          >
+            <span slot-scope="{ node, data }" class="custom-tree-node">
+              <span v-if="data.menuType === 'F'" class="tree-node-btn">【按钮】</span>
+              <span>{{ node.label }}</span>
+            </span>
+          </el-tree>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -388,7 +393,7 @@ export default {
       statusLogList: [],
       periodLogList: [],
       menuOptions: [],
-      menuExpand: false,
+      menuExpand: true,
       menuNodeAll: false,
       menuCheckStrictly: true,
       menuForm: { customerId: '', customerName: '' },
@@ -596,7 +601,7 @@ export default {
     /** 设备功能重置 */
     handleResetEquipment(row) {
       const name = row.customerName || row.customerId
-      this.$modal.confirm('是否确认将客户“' + name + '”的设备功能重置？将重置客户菜单权限、super 组及 super_01 的菜单权限为系统设置下非平台管理功能，并同步客户68分类（以标准68分类为蓝本）；若 super 组或 super_01 不存在则会创建。').then(() => {
+      this.$modal.confirm('是否确认将客户“' + name + '”的设备功能重置？将把默认对客户开放的权限开放给客户、super 组及 super_01，并同步客户68分类（以标准68分类为蓝本）；若 super 组或 super_01 不存在则会创建。').then(() => {
         return resetEquipmentFunctions(row.customerId)
       }).then(() => {
         this.$modal.msgSuccess('设备功能重置成功')
@@ -632,5 +637,10 @@ export default {
   margin-bottom: 12px;
   font-weight: 600;
   color: #303133;
+}
+.tree-node-btn {
+  color: #909399;
+  font-size: 12px;
+  margin-right: 4px;
 }
 </style>

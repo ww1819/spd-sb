@@ -385,14 +385,14 @@ export default {
       }
       this.resetForm('form')
     },
-    handleAdd() { this.reset(); this.open = true; this.title = '新增客户资产台账' },
+    handleAdd() { this.reset(); this.open = true; this.title = '新增资产台账' },
     handleUpdate(row) {
       this.reset()
       const id = (row && row.id) || this.ids[0]
       getAssetLedger(id).then(res => {
         this.form = res.data || {}
         this.open = true
-        this.title = '修改客户资产台账'
+        this.title = '修改资产台账'
       })
     },
     submitForm() {
