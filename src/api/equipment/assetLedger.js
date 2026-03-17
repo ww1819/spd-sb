@@ -18,3 +18,8 @@ export function delAssetLedger(id) {
 export function exportAssetLedger(query) {
   return request({ url: '/equipment/assetLedger/export', method: 'post', params: query })
 }
+export function importAssetLedgerFile(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({ url: '/equipment/assetLedger/importData', method: 'post', data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
+}

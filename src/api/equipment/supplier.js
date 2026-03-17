@@ -6,6 +6,9 @@ export function listSupplier(query) {
 export function getSupplier(id) {
   return request({ url: '/equipment/supplier/' + id, method: 'get' })
 }
+export function getOrCreateSupplier(name) {
+  return request({ url: '/equipment/supplier/getOrCreate', method: 'post', params: { name } })
+}
 export function addSupplier(data) {
   return request({ url: '/equipment/supplier', method: 'post', data })
 }

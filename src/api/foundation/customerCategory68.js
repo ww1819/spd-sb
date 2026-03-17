@@ -59,6 +59,14 @@ export function syncCustomerCategory68() {
   })
 }
 
+// 更新简码：根据分类名称批量更新当前客户下68分类的拼音简码
+export function updatePinyinCustomerCategory68() {
+  return request({
+    url: '/foundation/customerCategory68/updatePinyin',
+    method: 'post'
+  })
+}
+
 // 查询当前客户的68分类操作记录
 export function getCustomerCategory68Log() {
   return request({

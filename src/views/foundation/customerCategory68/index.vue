@@ -26,10 +26,16 @@
           <el-form-item label="分类名称" prop="category68Name">
             <el-input v-model="queryParams.category68Name" placeholder="请输入" clearable @keyup.enter.native="handleQuery" style="width:160px" />
           </el-form-item>
+          <el-form-item label="拼音简码" prop="namePinyin">
+            <el-input v-model="queryParams.namePinyin" placeholder="请输入" clearable @keyup.enter.native="handleQuery" style="width:120px" />
+          </el-form-item>
         </el-form>
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
             <el-button type="primary" plain icon="el-icon-refresh" size="small" @click="handleSync" v-hasPermi="['foundation:customerCategory68:sync']">同步</el-button>
+          </el-col>
+          <el-col :span="1.5">
+            <el-button type="warning" plain icon="el-icon-edit-outline" size="small" @click="handleUpdatePinyin" v-hasPermi="['foundation:customerCategory68:edit']">更新简码</el-button>
           </el-col>
           <el-col :span="1.5">
             <el-button type="success" plain icon="el-icon-edit" size="small" :disabled="single" @click="handleUpdate" v-hasPermi="['foundation:customerCategory68:edit']">修改</el-button>
@@ -52,6 +58,7 @@
           <el-table-column type="selection" width="55" align="center" />
           <el-table-column label="分类代码" align="center" prop="category68Code" width="140" show-overflow-tooltip />
           <el-table-column label="分类名称" align="center" prop="category68Name" min-width="200" show-overflow-tooltip />
+          <el-table-column label="拼音简码" align="center" prop="namePinyin" width="120" show-overflow-tooltip />
           <el-table-column label="对应标准ID" align="center" prop="refCategory68Id" width="100" />
           <el-table-column label="更新时间" align="center" prop="updateTime" width="160">
             <template slot-scope="scope">{{ parseTime(scope.row.updateTime, '{y}-{m}-{d} {h}:{i}') }}</template>
@@ -75,6 +82,9 @@
         </el-form-item>
         <el-form-item label="分类名称" prop="category68Name">
           <el-input v-model="form.category68Name" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item label="拼音简码" prop="namePinyin">
+          <el-input v-model="form.namePinyin" placeholder="可手动填写或通过「更新简码」批量生成" />
         </el-form-item>
       </el-form>
       <div slot="footer">
@@ -114,6 +124,7 @@ import {
   updateCustomerCategory68,
   delCustomerCategory68,
   syncCustomerCategory68,
+  updatePinyinCustomerCategory68,
   getCustomerCategory68Log
 } from '@/api/foundation/customerCategory68'
 
@@ -137,7 +148,8 @@ export default {
         pageNum: 1,
         pageSize: 10,
         category68Code: null,
-        category68Name: null
+        category68Name: null,
+        namePinyin: null
       },
       form: {},
       rules: {
@@ -181,6 +193,14 @@ export default {
         return syncCustomerCategory68()
       }).then(() => {
         this.$modal.msgSuccess('同步成功')
+        this.getList()
+      }).catch(() => {})
+    },
+    handleUpdatePinyin() {
+      this.$modal.confirm('是否根据分类名称批量更新全部68分类的拼音简码？').then(() => {
+        return updatePinyinCustomerCategory68()
+      }).then(() => {
+        this.$modal.msgSuccess('更新简码成功')
         this.getList()
       }).catch(() => {})
     },
@@ -238,7 +258,7 @@ export default {
       this.reset()
     },
     reset() {
-      this.form = { id: null, category68Code: null, category68Name: null }
+      this.form = { id: null, category68Code: null, category68Name: null, namePinyin: null }
       this.resetForm('form')
     }
   }

@@ -418,7 +418,7 @@
           ref="authMenuTree"
           :data="menuOptions"
           :props="defaultProps"
-          node-key="id"
+          node-key="menuId"
           show-checkbox
           :check-strictly="false"
           :default-expand-all="true"
@@ -770,13 +770,25 @@ export default {
         this.menuIndeterminate = false;
       }
     },
-    /** 获取所有菜单ID（递归） */
+    /** 获取所有菜单ID（递归），兼容 id 与 menuId（设备菜单 sb_menu 为 menuId） */
     getAllMenuIds(menuList) {
       let ids = [];
-      menuList.forEach(menu => {
-        ids.push(menu.id);
+      (menuList || []).forEach(menu => {
+        ids.push(menu.menuId != null ? menu.menuId : menu.id);
         if (menu.children && menu.children.length > 0) {
           ids = ids.concat(this.getAllMenuIds(menu.children));
+        }
+      });
+      return ids.filter(Boolean);
+    },
+    /** 授权弹窗菜单树用：与 node-key="menuId" 一致，只取 menuId */
+    getAuthMenuIds(menuList) {
+      let ids = [];
+      (menuList || []).forEach(menu => {
+        if (menu.menuId != null && menu.menuId !== '') ids.push(menu.menuId);
+        else if (menu.id != null && menu.id !== '') ids.push(menu.id);
+        if (menu.children && menu.children.length > 0) {
+          ids = ids.concat(this.getAuthMenuIds(menu.children));
         }
       });
       return ids;
@@ -812,7 +824,7 @@ export default {
         this.roleOptions = response.roles;
         this.userWarehouseOptions = response.warehouses;
         this.userDepartmentOptions = response.departments;
-        // 载入授权数据
+        // 载入授权数据（设备菜单为 sb_menu，menuId 为字符串）
         const menuIds = response.menuIds || [];
         console.log('获取到的菜单权限:', menuIds);
         this.authForm = {
@@ -825,19 +837,16 @@ export default {
       }).then(() => {
         this.$nextTick(() => {
           if (this.$refs.authMenuTree) {
-            // 确保 menuIds 是数字数组
-            const menuIds = (this.authForm.menuIds || []).map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
-            console.log('设置菜单树选中状态 - menuIds:', menuIds);
-            this.$refs.authMenuTree.setCheckedKeys(menuIds);
+            const keys = (this.authForm.menuIds || []).filter(id => id != null && String(id).trim() !== '');
+            console.log('设置菜单树选中状态 - menuIds:', keys);
+            this.$refs.authMenuTree.setCheckedKeys(keys);
             this.updateAuthMenuCheckState();
           }
         });
-        // 确保弹窗打开后再设置一次（有时候需要延迟）
         setTimeout(() => {
           if (this.$refs.authMenuTree && this.authForm.menuIds && this.authForm.menuIds.length > 0) {
-            const menuIds = (this.authForm.menuIds || []).map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
-            console.log('延迟设置菜单树选中状态 - menuIds:', menuIds);
-            this.$refs.authMenuTree.setCheckedKeys(menuIds);
+            const keys = (this.authForm.menuIds || []).filter(id => id != null && String(id).trim() !== '');
+            this.$refs.authMenuTree.setCheckedKeys(keys);
             this.updateAuthMenuCheckState();
           }
         }, 100);
@@ -848,7 +857,7 @@ export default {
     handleAuthMenuAll(val) {
       if (this.$refs.authMenuTree) {
         if (val) {
-          const allMenuIds = this.getAllMenuIds(this.menuOptions);
+          const allMenuIds = this.getAuthMenuIds(this.menuOptions);
           this.$refs.authMenuTree.setCheckedKeys(allMenuIds);
           this.authForm.menuIds = allMenuIds;
         } else {
@@ -869,7 +878,7 @@ export default {
     updateAuthMenuCheckState(checkedKeysParam, halfCheckedKeysParam) {
       const checkedKeys = checkedKeysParam || (this.$refs.authMenuTree ? this.$refs.authMenuTree.getCheckedKeys() : []);
       const halfCheckedKeys = halfCheckedKeysParam || (this.$refs.authMenuTree ? this.$refs.authMenuTree.getHalfCheckedKeys() : []);
-      const allMenuIds = this.getAllMenuIds(this.menuOptions);
+      const allMenuIds = this.getAuthMenuIds(this.menuOptions);
       if (!checkedKeys || checkedKeys.length === 0) {
         this.authMenuCheckAll = false;
         this.authMenuIndeterminate = false;
@@ -907,38 +916,24 @@ export default {
       // 先获取完整的用户信息，然后合并权限数据
       getUser(this.authForm.userId).then(response => {
         const userData = response.data;
-        // 确保 menuIds 是数字数组
-        const menuIds = Array.isArray(this.authForm.menuIds) 
-          ? this.authForm.menuIds.map(id => Number(id)).filter(id => !isNaN(id) && id > 0)
+        // 设备菜单为 sb_menu，menuId 为字符串，直接使用数组
+        const menuIds = Array.isArray(this.authForm.menuIds)
+          ? this.authForm.menuIds.filter(id => id != null && String(id).trim() !== '')
           : [];
-        console.log('处理后的 menuIds:', menuIds);
-        console.log('userData 中的 menuIds:', userData.menuIds);
-        // 合并权限数据到用户对象，确保 menuIds 不被覆盖
         const payload = {
           ...userData,
           userId: this.authForm.userId,
-          menuIds: menuIds, // 明确设置 menuIds，确保不被 userData 中的值覆盖
+          menuIds: menuIds,
           departmentIds: this.authForm.departmentIds || [],
           warehouseIds: this.authForm.warehouseIds || []
         };
-        // 再次确认 menuIds 没有被覆盖
-        if (payload.menuIds !== menuIds) {
-          console.warn('警告：menuIds 被覆盖！原始值:', menuIds, '当前值:', payload.menuIds);
-          payload.menuIds = menuIds;
-        }
-        console.log('提交授权数据 - userId:', payload.userId, 'menuIds:', payload.menuIds, 'menuIds类型:', typeof payload.menuIds, '是数组:', Array.isArray(payload.menuIds));
-        console.log('完整 payload:', JSON.stringify(payload, null, 2));
         return updateUser(payload);
       }).then(response => {
-        console.log('保存授权响应:', response);
         this.$modal.msgSuccess("授权成功");
-        // 不关闭弹窗，刷新授权数据
         const userId = this.authForm.userId;
-        // 重新获取用户信息以刷新菜单权限
         return getUser(userId);
       }).then(response => {
         const menuIds = response.menuIds || [];
-        console.log('保存后重新获取的菜单权限:', menuIds, '完整响应:', response);
         this.authForm.menuIds = menuIds;
         if (this.$refs.authMenuTree) {
           this.$refs.authMenuTree.setCheckedKeys(menuIds);

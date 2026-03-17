@@ -6,6 +6,9 @@ export function listManufacturer(query) {
 export function getManufacturer(id) {
   return request({ url: '/equipment/manufacturer/' + id, method: 'get' })
 }
+export function getOrCreateManufacturer(name) {
+  return request({ url: '/equipment/manufacturer/getOrCreate', method: 'post', params: { name } })
+}
 export function addManufacturer(data) {
   return request({ url: '/equipment/manufacturer', method: 'post', data })
 }
