@@ -208,7 +208,7 @@
           :props="defaultProps"
           node-key="id"
           show-checkbox
-          :check-strictly="false"
+          :check-strictly="true"
           :default-expand-all="true"
           :expand-on-click-node="false"
           :check-on-click-node="true"
@@ -930,6 +930,12 @@ export default {
     submitAuth() {
       const groupId = this.authForm.postId;
       const customerId = this.customerId;
+      // 提交时合并勾选与半选节点（check-strictly 下父节点可能在 halfCheckedKeys）
+      if (this.$refs.authMenuTree) {
+        const checked = this.$refs.authMenuTree.getCheckedKeys() || [];
+        const half = this.$refs.authMenuTree.getHalfCheckedKeys() || [];
+        this.authForm.menuIds = [...new Set([...checked, ...half])];
+      }
       const menuIds = Array.isArray(this.authForm.menuIds)
         ? this.authForm.menuIds.map(id => String(id)).filter(Boolean)
         : [];

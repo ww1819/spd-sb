@@ -420,7 +420,7 @@
           :props="defaultProps"
           node-key="menuId"
           show-checkbox
-          :check-strictly="false"
+          :check-strictly="true"
           :default-expand-all="true"
           :expand-on-click-node="false"
           :check-on-click-node="true"
@@ -912,6 +912,12 @@ export default {
     },
     /** 授权提交 */
     submitAuth() {
+      // 提交时合并勾选与半选节点（check-strictly 下父节点可能在 halfCheckedKeys）
+      if (this.$refs.authMenuTree) {
+        const checked = this.$refs.authMenuTree.getCheckedKeys() || [];
+        const half = this.$refs.authMenuTree.getHalfCheckedKeys() || [];
+        this.authForm.menuIds = [...new Set([...checked, ...half])];
+      }
       console.log('开始提交授权 - 当前 menuIds:', this.authForm.menuIds);
       // 先获取完整的用户信息，然后合并权限数据
       getUser(this.authForm.userId).then(response => {
