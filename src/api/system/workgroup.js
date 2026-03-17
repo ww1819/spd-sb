@@ -53,6 +53,23 @@ export function listUserIdsByGroupId(groupId) {
   })
 }
 
+/** 工作组添加用户 */
+export function addWorkGroupUsers(groupId, userIds) {
+  return request({
+    url: BASE + '/users/' + groupId,
+    method: 'post',
+    data: userIds || []
+  })
+}
+
+/** 工作组移除用户 */
+export function removeWorkGroupUser(groupId, userId) {
+  return request({
+    url: BASE + '/users/' + groupId + '/' + userId,
+    method: 'delete'
+  })
+}
+
 /** 工作组可分配菜单树（客户已开启） */
 export function getWorkGroupMenuTree(customerId) {
   return request({
@@ -70,12 +87,13 @@ export function getWorkGroupMenuIds(groupId) {
   })
 }
 
-/** 保存工作组菜单权限 */
+/** 保存工作组菜单权限（使用逗号分隔字符串避免 PUT 数组参数绑定失败） */
 export function saveWorkGroupMenus(groupId, customerId, menuIds) {
+  const menuIdsStr = Array.isArray(menuIds) && menuIds.length ? menuIds.map(String).filter(Boolean).join(',') : ''
   return request({
     url: BASE + '/menu/' + groupId,
     method: 'put',
-    params: { customerId, menuIds }
+    params: { customerId, menuIdsStr }
   })
 }
 
@@ -87,12 +105,14 @@ export function getWorkGroupWarehouseIds(groupId) {
   })
 }
 
-/** 保存工作组仓库权限 */
+/** 保存工作组仓库权限（使用逗号分隔字符串避免 PUT 数组参数绑定失败） */
 export function saveWorkGroupWarehouses(groupId, customerId, warehouseIds) {
+  const arr = warehouseIds || []
+  const warehouseIdsStr = Array.isArray(arr) && arr.length ? arr.map(Number).filter(n => !isNaN(n)).join(',') : ''
   return request({
     url: BASE + '/warehouse/' + groupId,
     method: 'put',
-    params: { customerId, warehouseIds: warehouseIds || [] }
+    params: { customerId, warehouseIdsStr }
   })
 }
 
@@ -104,12 +124,14 @@ export function getWorkGroupDeptIds(groupId) {
   })
 }
 
-/** 保存工作组科室权限 */
+/** 保存工作组科室权限（使用逗号分隔字符串避免 PUT 数组参数绑定失败） */
 export function saveWorkGroupDepts(groupId, customerId, deptIds) {
+  const arr = deptIds || []
+  const deptIdsStr = Array.isArray(arr) && arr.length ? arr.map(Number).filter(n => !isNaN(n)).join(',') : ''
   return request({
     url: BASE + '/dept/' + groupId,
     method: 'put',
-    params: { customerId, deptIds: deptIds || [] }
+    params: { customerId, deptIdsStr }
   })
 }
 

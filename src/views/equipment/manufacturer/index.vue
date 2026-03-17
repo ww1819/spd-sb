@@ -36,10 +36,10 @@
     <el-dialog :title="title" :visible.sync="open" width="500px" append-to-body>
       <el-form ref="form" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入名称" />
+          <el-input v-model="form.name" placeholder="请输入名称" @input="updateNamePinyin" />
         </el-form-item>
         <el-form-item label="名称拼音简码" prop="namePinyin">
-          <el-input v-model="form.namePinyin" placeholder="支持名称/简码模糊搜索" />
+          <el-input v-model="form.namePinyin" placeholder="根据名称自动生成，可编辑" />
         </el-form-item>
       </el-form>
       <div slot="footer">
@@ -51,6 +51,7 @@
 </template>
 
 <script>
+import { pinyin } from 'pinyin-pro'
 import { listManufacturer, getManufacturer, addManufacturer, updateManufacturer, delManufacturer } from '@/api/equipment/manufacturer'
 
 export default {
@@ -104,7 +105,14 @@ export default {
     },
     handleSelectionChange(selection) { this.ids = selection.map(r => r.id); this.single = selection.length !== 1 },
     handleQuery() { this.queryParams.pageNum = 1; this.getList() },
-    resetQuery() { this.resetForm('queryForm'); this.handleQuery() }
+    resetQuery() { this.resetForm('queryForm'); this.handleQuery() },
+    getPinyinInitials(val) {
+      if (!val || !String(val).trim()) return ''
+      return pinyin(String(val).trim(), { pattern: 'first', toneType: 'none', type: 'array' }).join('').toUpperCase()
+    },
+    updateNamePinyin() {
+      this.form.namePinyin = this.getPinyinInitials(this.form.name)
+    }
   }
 }
 </script>

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="68px">
       <el-form-item label="参数名称" prop="configName">
@@ -236,15 +236,24 @@ export default {
     this.getList();
   },
   methods: {
-    /** 查询参数列表 */
+    /** 查询参数列表（租户用户不可访问，不请求接口避免 403） */
     getList() {
+      if (this.$store.getters.customerId) {
+        this.configList = [];
+        this.total = 0;
+        this.loading = false;
+        return;
+      }
       this.loading = true;
       listConfig(this.addDateRange(this.queryParams, this.dateRange)).then(response => {
-          this.configList = response.rows;
-          this.total = response.total;
-          this.loading = false;
-        }
-      );
+        this.configList = response.rows;
+        this.total = response.total;
+      }).catch(() => {
+        this.configList = [];
+        this.total = 0;
+      }).finally(() => {
+        this.loading = false;
+      });
     },
     // 取消按钮
     cancel() {

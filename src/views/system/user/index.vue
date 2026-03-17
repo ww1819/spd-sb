@@ -9,25 +9,25 @@
           </div>
           <div class="dept-panel-content">
             <div class="workgroup-list-wrapper">
-              <el-table :data="workgroupList" 
-                        :highlight-current-row="true"
-                        @row-click="handleWorkgroupRowClick"
-                        :row-class-name="getWorkgroupRowClassName"
-                        style="width: 100%;"
-                        :show-header="true"
-                        height="calc(100vh - 220px)"
-                        border>
-                <el-table-column label="工作组" align="center" prop="postName" show-overflow-tooltip>
-                  <template slot="header">
-                    <span style="cursor: pointer; font-weight: 700;" @click="handleWorkgroupHeaderClick">工作组</span>
-                  </template>
-                  <template slot-scope="scope">
-                    <span>{{ scope.row.postName }}</span>
-                  </template>
-                </el-table-column>
-              </el-table>
-              <div v-if="workgroupList.length === 0" class="warehouse-empty">
-                暂无工作组数据
+              <el-tree
+                :data="workgroupTreeData"
+                :props="{ label: 'label', children: 'children' }"
+                node-key="id"
+                :default-expanded-keys="['__all__']"
+                :current-node-key="currentWorkgroupNodeKey"
+                highlight-current
+                :expand-on-click-node="false"
+                @node-click="handleWorkgroupNodeClick"
+                style="width: 100%;"
+                class="workgroup-tree"
+              >
+                <span slot-scope="{ node, data }" class="workgroup-tree-node">
+                  <i :class="node.expanded ? 'el-icon-folder-opened' : 'el-icon-folder'" class="tree-icon"></i>
+                  <span>{{ node.label }}</span>
+                </span>
+              </el-tree>
+              <div v-if="!customerId" class="warehouse-empty">
+                请选择租户
               </div>
             </div>
           </div>
@@ -518,6 +518,27 @@ export default {
         (item.name || "").includes(keyword)
       );
     },
+    /** 工作组树数据：根节点 [工作组] 点击显示租户下所有用户，子节点为各工作组点击显示该组用户 */
+    workgroupTreeData() {
+      const children = (this.workgroupList || []).map(g => ({
+        id: g.postId,
+        label: g.postName || g.postCode || g.postId,
+        postId: g.postId
+      }));
+      return [{
+        id: '__all__',
+        label: '工作组',
+        postId: undefined,
+        children
+      }];
+    },
+    /** 树当前选中节点 key（用于高亮） */
+    currentWorkgroupNodeKey() {
+      if (this.currentWorkgroupId !== undefined && this.currentWorkgroupId !== null) {
+        return this.currentWorkgroupId;
+      }
+      return '__all__';
+    },
   },
   data() {
     return {
@@ -958,40 +979,25 @@ export default {
         }).catch(() => { this.workgroupList = []; });
       }
     },
-    // 工作组行点击事件（用 workgroupPostId 筛选，不写 deptId 避免 UUID 导致后端 Long 转换异常）
-    handleWorkgroupRowClick(row) {
-      this.currentWorkgroupId = row.postId;
-      this.queryParams.workgroupPostId = row.postId;
+    /** 工作组树节点点击：根节点 [工作组] 显示租户下所有用户，子节点显示该工作组下用户 */
+    handleWorkgroupNodeClick(data) {
+      this.currentWorkgroupId = data.postId;
+      this.queryParams.workgroupPostId = data.postId;
       this.queryParams.deptId = undefined;
       this.handleQuery();
     },
-    // 工作组表头点击事件 - 显示所有用户
-    handleWorkgroupHeaderClick() {
-      this.currentWorkgroupId = undefined;
-      this.queryParams.workgroupPostId = undefined;
-      this.queryParams.deptId = undefined;
-      this.handleQuery();
-    },
-    // 工作组行样式类名
-    getWorkgroupRowClassName({ row, rowIndex }) {
-      if (this.currentWorkgroupId === row.postId) {
-        return 'workgroup-row-active';
-      }
-      return '';
-    },
-    // 工作组序号计算
-    getWorkgroupIndex(index) {
-      return index + 1;
-    },
-    /** 获取机构单位（参数设置第七条参数） */
+    /** 获取机构单位（参数设置第七条参数）；租户用户不访问 listConfig */
     getOrganizationUnit() {
+      if (this.$store.getters.customerId) {
+        this.organizationUnit = "";
+        return;
+      }
       listConfig({}).then(response => {
         if (response.rows && response.rows.length >= 7) {
-          // 获取第七条参数的值
-          const seventhConfig = response.rows[6]; // 索引从0开始，第七条是索引6
+          const seventhConfig = response.rows[6];
           this.organizationUnit = seventhConfig.configValue;
         }
-      });
+      }).catch(() => { this.organizationUnit = ""; });
     },
     // 用户状态修改
     handleStatusChange(row) {
@@ -1024,6 +1030,7 @@ export default {
         status: "0",
         remark: undefined,
         postIds: [],
+        workGroupIds: [],
         roleIds: [],
         warehouseIds: [],
         departmentIds: [],
@@ -1108,8 +1115,9 @@ export default {
         this.userWarehouseOptions = response.warehouses;
         this.userDepartmentOptions = response.departments;
 
-        // 工作组使用独立字段，不写入 form.deptId（后端 deptId 为 Long，工作组 ID 为 UUID）
-        this.selectedPostId = (response.postIds && response.postIds.length > 0) ? response.postIds[0] : undefined;
+        // 设备系统工作组从 workGroupIds 回显（后端从 sb_work_group_user 读取），不写入 postIds
+        this.$set(this.form, "workGroupIds", response.workGroupIds || []);
+        this.selectedPostId = (response.workGroupIds && response.workGroupIds.length > 0) ? response.workGroupIds[0] : undefined;
         this.$set(this.form, "roleIds", response.roleIds);
         this.$set(this.form, "warehouseIds", response.warehouseIds);
         this.$set(this.form, "departmentIds", response.departmentIds);
@@ -1204,13 +1212,9 @@ export default {
             this.form.roleIds = [];
           }
           
-          // 将选中的工作组写入 postIds（不使用 form.deptId，避免 UUID 被当作 Long 提交）
-          if (this.selectedPostId != null && this.selectedPostId !== undefined && this.selectedPostId !== '') {
-            this.form.postIds = [this.selectedPostId];
-          } else {
-            this.form.postIds = [];
-          }
-          
+          // 设备系统工作组写入 workGroupIds，保存到 sb_work_group_user（不写入 postIds/sys_user_post）
+          this.form.workGroupIds = (this.selectedPostId != null && this.selectedPostId !== undefined && this.selectedPostId !== '') ? [this.selectedPostId] : [];
+
           if (this.form.userId != undefined) {
             updateUser(this.form).then(response => {
               this.$modal.msgSuccess("修改成功");
@@ -1484,11 +1488,32 @@ export default {
   padding: 0 20px 16px 20px;
 }
 
-/* 工作组列表面板样式 */
+/* 工作组树列表面板样式 */
 .workgroup-list-wrapper {
   flex: 1;
-  overflow: hidden;
-  padding: 0;
+  overflow: auto;
+  padding: 8px 0;
+}
+
+.workgroup-tree {
+  font-size: 13px;
+}
+.workgroup-tree-node {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+}
+.workgroup-tree-node .tree-icon {
+  margin-right: 6px;
+  color: #909399;
+}
+::v-deep .dept-panel .workgroup-tree .el-tree-node__content {
+  padding: 6px 0;
+  cursor: pointer;
+}
+::v-deep .dept-panel .workgroup-tree .el-tree-node.is-current > .el-tree-node__content {
+  background-color: #ECF5FF;
+  color: #409EFF;
 }
 
 .warehouse-empty {
@@ -1496,41 +1521,6 @@ export default {
   padding: 40px 0;
   color: #909399;
   font-size: 14px;
-}
-
-::v-deep .dept-panel .el-table {
-  font-size: 12px;
-}
-
-::v-deep .dept-panel .el-table th {
-  padding: 8px 0;
-  background-color: #F5F7FA;
-  font-weight: 700;
-}
-
-::v-deep .dept-panel .el-table td {
-  padding: 8px 0;
-}
-
-::v-deep .dept-panel .el-table tbody tr {
-  cursor: pointer;
-}
-
-::v-deep .dept-panel .el-table tbody tr:hover > td {
-  background-color: #F5F7FA !important;
-}
-
-::v-deep .dept-panel .el-table .workgroup-row-active {
-  background-color: #ECF5FF !important;
-}
-
-::v-deep .dept-panel .el-table .workgroup-row-active td {
-  background-color: #ECF5FF !important;
-  color: #409EFF;
-}
-
-::v-deep .dept-panel .el-table tbody tr.workgroup-row-active:hover > td {
-  background-color: #ECF5FF !important;
 }
 
 /* 授权菜单树样式 */

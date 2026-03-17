@@ -40,10 +40,10 @@
           <el-input v-model="form.categoryCode" placeholder="请输入" />
         </el-form-item>
         <el-form-item label="资产分类名称" prop="categoryName">
-          <el-input v-model="form.categoryName" placeholder="请输入" />
+          <el-input v-model="form.categoryName" placeholder="请输入" @input="updateCategoryPinyin" />
         </el-form-item>
         <el-form-item label="资产分类拼音简码" prop="categoryPinyin">
-          <el-input v-model="form.categoryPinyin" placeholder="支持名称/简码模糊搜索" />
+          <el-input v-model="form.categoryPinyin" placeholder="根据名称自动生成，可编辑" />
         </el-form-item>
       </el-form>
       <div slot="footer">
@@ -55,6 +55,7 @@
 </template>
 
 <script>
+import { pinyin } from 'pinyin-pro'
 import { listAssetCategory, getAssetCategory, addAssetCategory, updateAssetCategory, delAssetCategory } from '@/api/equipment/assetCategory'
 
 export default {
@@ -108,7 +109,14 @@ export default {
     },
     handleSelectionChange(selection) { this.ids = selection.map(r => r.id); this.single = selection.length !== 1 },
     handleQuery() { this.queryParams.pageNum = 1; this.getList() },
-    resetQuery() { this.resetForm('queryForm'); this.handleQuery() }
+    resetQuery() { this.resetForm('queryForm'); this.handleQuery() },
+    getPinyinInitials(val) {
+      if (!val || !String(val).trim()) return ''
+      return pinyin(String(val).trim(), { pattern: 'first', toneType: 'none', type: 'array' }).join('').toUpperCase()
+    },
+    updateCategoryPinyin() {
+      this.form.categoryPinyin = this.getPinyinInitials(this.form.categoryName)
+    }
   }
 }
 </script>

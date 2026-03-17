@@ -1,8 +1,8 @@
 /**
  * 医院名称 Mixin
- * 用于打印组件获取医院名称
+ * 用于打印组件获取医院名称；租户用户用 getConfigKey，平台用户用 listConfig
  */
-import { listConfig } from '@/api/system/config'
+import { listConfig, getConfigKey } from '@/api/system/config'
 
 // 缓存键名
 const HOSPITAL_NAME_CACHE_KEY = 'hospital_name_cache'
@@ -64,29 +64,35 @@ export default {
       }
     },
     
-    // 获取医院名称（通过参数名称"医院名称"查询参数键值）
+    // 获取医院名称（通过参数名称"医院名称"查询参数键值）；租户用户不访问 listConfig，改用 getConfigKey 或留空
     getHospitalName() {
-      // 如果正在加载，返回现有的Promise
       if (this.hospitalNameLoading && this.hospitalNamePromise) {
         return this.hospitalNamePromise
       }
-      
-      // 先尝试从缓存获取
       const cachedName = this.getHospitalNameFromCache()
       if (cachedName) {
         this.hospitalName = cachedName
         return Promise.resolve(cachedName)
       }
-      
-      // 如果已有医院名称，直接返回
       if (this.hospitalName) {
         return Promise.resolve(this.hospitalName)
       }
-      
-      // 标记为加载中
+      // 租户用户不调用 listConfig（无权限），改用 getConfigKey 按 key 读取
+      const isTenant = this.$store && this.$store.getters && this.$store.getters.customerId
+      if (isTenant) {
+        this.hospitalNameLoading = true
+        this.hospitalNamePromise = getConfigKey('sys.hospital.name').then(res => {
+          const name = (res && res.msg) ? String(res.msg) : ''
+          this.hospitalName = name
+          if (name) this.saveHospitalNameToCache(name)
+          return name
+        }).catch(() => '').finally(() => {
+          this.hospitalNameLoading = false
+          this.hospitalNamePromise = null
+        })
+        return this.hospitalNamePromise
+      }
       this.hospitalNameLoading = true
-      
-      // 创建Promise并保存
       this.hospitalNamePromise = listConfig({}).then(response => {
         let configList = []
         if (response && response.rows) {

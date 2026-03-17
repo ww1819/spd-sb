@@ -241,11 +241,14 @@ export default {
       // 这里可以添加跳转到消息列表页面的逻辑
       this.$message.info('查看全部消息')
     },
-    // 获取参数设置第七条参数值（机构单位）
+    // 获取参数设置第七条参数值（机构单位）；租户用户不访问系统参数接口
     getOrganizationUnit() {
+      if (this.$store.getters.customerId) {
+        this.organizationUnit = ''
+        return
+      }
       listConfig({}).then(response => {
         if (response.rows && response.rows.length >= 7) {
-          // 获取第七条参数的值（索引从0开始，第七条是索引6）
           const seventhConfig = response.rows[6]
           this.organizationUnit = seventhConfig.configValue || ''
         }
@@ -255,7 +258,6 @@ export default {
     }
   },
   created() {
-    // 获取参数设置第七条参数值
     this.getOrganizationUnit()
   }
 }
