@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <div class="query-container">
       <div class="form-fields-container">
@@ -353,6 +353,14 @@
                 <el-col :span="4">
                   <el-form-item label="规格：" prop="speci">
                     <el-input v-model="form.speci" placeholder="请输入规格" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="24">
+              <el-form-item label="入选原因：" prop="selectionReason">
+                <el-input v-model="form.selectionReason" type="textarea" :rows="2" placeholder="新增时必填" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -1120,22 +1128,14 @@ export default {
       // 表单校验
       rules: {
         code: [
-          { required: true, message: "耗材编码不能为空", trigger: "blur" },
           { validator: (rule, value, callback) => {
-            if (!value) {
+            if (!value || !String(value).trim()) {
               callback();
               return;
             }
-            
-            // 只验证编码不能为空，不限制长度和格式
-            // 手工输入的编码可以是任意长度和格式
-            // 自动生成的编码仍然是6位数字
-            
-            // 检查编码是否已存在（排除当前编辑的记录）
             listMaterial({ code: value, pageNum: 1, pageSize: 1 }).then(response => {
               if (response.rows && response.rows.length > 0) {
                 const existingMaterial = response.rows[0];
-                // 如果是新增模式，或者存在其他记录的编码，则报错
                 if (!this.form.id || existingMaterial.id !== this.form.id) {
                   callback(new Error('该耗材编码已存在，请使用其他编码'));
                 } else {
@@ -1152,33 +1152,37 @@ export default {
         name: [
           { required: true, message: "耗材名称不能为空", trigger: "blur" }
         ],
-        supplierId: [
-          { required: true, message: "供应商不能为空", trigger: "blur" }
-        ],
         speci: [
           { required: true, message: "规格不能为空", trigger: "blur" }
         ],
-        model: [
-          { required: true, message: "型号不能为空", trigger: "blur" }
-        ],
         price: [
-          { required: true, message: "价格不能为空", trigger: "blur" }
+          { required: true, message: "单价不能为空", trigger: "blur" },
+          { validator: (rule, value, callback) => {
+            if (value === '' || value === null || value === undefined) {
+              callback(new Error('单价不能为空'));
+              return;
+            }
+            const n = Number(value);
+            if (Number.isNaN(n)) {
+              callback(new Error('单价请输入有效数字'));
+            } else {
+              callback();
+            }
+          }, trigger: "blur" }
         ],
-        referredName: [
-          { required: true, message: "名称简码不能为空", trigger: "blur" }
-        ],
-        factoryId: [
-          { required: true, message: "生产厂家不能为空", trigger: "blur" }
-        ],
-        storeroomId: [
-          { required: true, message: "库房分类不能为空", trigger: "blur" }
-        ],
-        financeCategoryId: [
-          { required: true, message: "财务分类不能为空", trigger: "blur" }
-        ],
-        unitId: [
-          { required: true, message: "单位不能为空", trigger: "blur" }
-        ],
+        selectionReason: [
+          { validator: (rule, value, callback) => {
+            if (!this.form.id) {
+              if (!value || !String(value).trim()) {
+                callback(new Error('新增时入选原因不能为空'));
+              } else {
+                callback();
+              }
+            } else {
+              callback();
+            }
+          }, trigger: "blur" }
+        ]
       },
       // 用户导入参数
       upload: {
@@ -1288,7 +1292,8 @@ export default {
         sunshineSecondLevel: null,
         sunshineThirdLevel: null,
         sunshineSource: null,
-        sunshineCoefficient: null
+        sunshineCoefficient: null,
+        selectionReason: null
       };
       this.resetForm("form");
     },
