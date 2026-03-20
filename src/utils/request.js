@@ -34,6 +34,8 @@ service.interceptors.request.use(config => {
       config.headers['X-Tenant-Id'] = tenant.customerId
       if (tenant.customerCode) config.headers['X-Tenant-Code'] = tenant.customerCode
     }
+    // 设备端：科室/仓库数据范围仅走 sb_user_permission_*（与 Token loginChannel 一致，旧会话兜底）
+    config.headers['X-Login-Channel'] = 'equipment'
   }
   // get请求映射params参数
   if (config.method === 'get' && config.params) {
