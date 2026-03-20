@@ -10,6 +10,24 @@ const getters = {
   tenant: state => state.user.tenant,
   /** 当前租户 ID，业务请求与列表过滤使用 */
   customerId: state => (state.user.tenant && state.user.tenant.customerId) ? state.user.tenant.customerId : '',
+  /** 科室导入：衡水市第三人民医院须填 HIS 科室 ID（tenantKey=HS_003 或 customerId 与 TenantEnum.HS_003 一致） */
+  departImportRequiresHisDeptId: state => {
+    const t = state.user.tenant
+    if (!t) return false
+    return t.tenantKey === 'HS_003' || t.customerId === 'hengsui-third-001'
+  },
+  /** 供应商：衡水市第三人民医院须填 HIS 供应商 ID（与 TenantEnum.HS_003 一致） */
+  supplierImportRequiresHisId: state => {
+    const t = state.user.tenant
+    if (!t) return false
+    return t.tenantKey === 'HS_003' || t.customerId === 'hengsui-third-001'
+  },
+  /** 生产厂家：衡水须填 HIS 生产厂家 ID（与 TenantEnum.HS_003 一致） */
+  factoryImportRequiresHisId: state => {
+    const t = state.user.tenant
+    if (!t) return false
+    return t.tenantKey === 'HS_003' || t.customerId === 'hengsui-third-001'
+  },
   avatar: state => state.user.avatar,
   name: state => state.user.name,
   introduction: state => state.user.introduction,

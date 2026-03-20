@@ -9,6 +9,14 @@ export function listdepart(query) {
   })
 }
 
+/** 科室维护左侧树（根节点为客户名） */
+export function departTree() {
+  return request({
+    url: '/foundation/depart/tree',
+    method: 'get'
+  })
+}
+
 // 查询所有科室列表
 export function listdepartAll(userId) {
   // 确保 userId 是有效的
@@ -66,5 +74,34 @@ export function updateReferred(ids) {
     url: '/foundation/depart/updateReferred',
     method: 'post',
     data: { ids }
+  })
+}
+
+export function validateDepartImport(file, updateSupport) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/foundation/depart/importValidate?updateSupport=' + !!updateSupport,
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data', repeatSubmit: false }
+  })
+}
+
+export function listDepartmentChangeLog(deptId) {
+  return request({
+    url: '/foundation/depart/changeLog/' + deptId,
+    method: 'get'
+  })
+}
+
+export function importDepartData(file, updateSupport, confirm) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/foundation/depart/importData?updateSupport=' + !!updateSupport + '&confirm=' + !!confirm,
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data', repeatSubmit: false }
   })
 }

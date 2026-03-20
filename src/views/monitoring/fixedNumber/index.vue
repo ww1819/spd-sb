@@ -224,10 +224,17 @@
           ></el-input-number>
         </template>
       </el-table-column>
-      <el-table-column label="有效期提醒" align="center" prop="expiryReminder" width="120" show-overflow-tooltip resizable>
+      <el-table-column label="有效期提醒(天)" align="center" prop="expiryReminder" width="140" resizable>
         <template slot-scope="scope">
-          <span v-if="scope.row.expiryReminder">{{ scope.row.expiryReminder }}</span>
-          <span v-else>--</span>
+          <el-input-number
+            v-model="scope.row.expiryReminder"
+            :min="0"
+            :precision="0"
+            size="small"
+            style="width: 100%;"
+            controls-position="right"
+            @change="handleFieldChange(scope.row)"
+          />
         </template>
       </el-table-column>
       <el-table-column label="监测" align="center" prop="monitoring" width="100" show-overflow-tooltip resizable>
@@ -240,10 +247,34 @@
           ></el-switch>
         </template>
       </el-table-column>
-      <el-table-column label="货位" align="center" prop="location" width="120" show-overflow-tooltip resizable>
+      <el-table-column label="货位" align="center" prop="location" width="168" resizable>
         <template slot-scope="scope">
-          <span v-if="scope.row.location">{{ scope.row.location }}</span>
-          <span v-else>--</span>
+          <template v-if="queryParams.fixedNumberType === '1' && queryParams.warehouseId">
+            <el-select
+              :value="scope.row.locationId"
+              filterable
+              clearable
+              placeholder="选择货位"
+              size="small"
+              style="width: 100%;"
+              @change="(v) => onFixedNumberLocationChange(scope.row, v)"
+            >
+              <el-option
+                v-for="opt in fixedNumberLocationOptions"
+                :key="opt.locationId"
+                :label="opt.locationName"
+                :value="opt.locationId"
+              />
+            </el-select>
+          </template>
+          <el-input
+            v-else
+            v-model="scope.row.location"
+            size="small"
+            placeholder="货位"
+            clearable
+            @change="handleFieldChange(scope.row)"
+          />
         </template>
       </el-table-column>
       <el-table-column :label="queryParams.fixedNumberType === '2' ? '科室' : '仓库'" align="center" width="150" show-overflow-tooltip resizable>
@@ -275,6 +306,18 @@
         <template slot-scope="scope">
           <span v-if="scope.row.warehouseCategoryName">{{ scope.row.warehouseCategoryName }}</span>
           <span v-else>--</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="租户ID" align="center" prop="tenantId" width="120" show-overflow-tooltip resizable />
+      <el-table-column label="备注" align="center" prop="remark" min-width="140" resizable>
+        <template slot-scope="scope">
+          <el-input
+            v-model="scope.row.remark"
+            size="small"
+            placeholder="备注"
+            clearable
+            @change="handleFieldChange(scope.row)"
+          />
         </template>
       </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="100" fixed="right">
@@ -436,6 +479,7 @@
 
 <script>
 import { listFixedNumber, addFixedNumber } from "@/api/monitoring/fixedNumber";
+import { listLocationAll } from "@/api/foundation/location";
 import { listWarehouse } from "@/api/foundation/warehouse";
 import { listdepartAll } from "@/api/foundation/depart";
 import { listMaterial } from "@/api/foundation/material";
@@ -506,7 +550,8 @@ export default {
       // 表单参数
       form: {},
       // 表单校验
-      rules: {}
+      rules: {},
+      fixedNumberLocationOptions: []
     };
   },
   computed: {
@@ -537,36 +582,29 @@ export default {
   },
   watch: {
     'queryParams.fixedNumberType'(newVal, oldVal) {
-      // 当定数类型改变时，清空选择并重新加载列表
       this.queryParams.warehouseId = null;
       this.queryParams.departmentId = null;
       if (newVal === '1' || !newVal) {
-        // 仓库定数监测，加载仓库列表
         this.getWarehouseList();
       } else if (newVal === '2') {
-        // 科室定数监测，加载科室列表
         this.getDepartmentList();
       }
-      // 切换类型时，清空当前列表并尝试加载新类型的数据
       this.fixedNumberList = [];
       this.total = 0;
+      this.fixedNumberLocationOptions = [];
       this.loadFromLocalStorage();
     },
     'queryParams.warehouseId'(newVal) {
-      // 仓库改变时，重新加载数据
       if (this.queryParams.fixedNumberType === '1') {
+        this.loadFixedNumberLocations();
         this.loadFromLocalStorage();
       }
     },
     'queryParams.departmentId'(newVal) {
-      // 科室改变时，重新加载数据
       if (this.queryParams.fixedNumberType === '2') {
         this.loadFromLocalStorage();
       }
-    }
-  },
-  watch: {
-    // 监听数据变化，重新设置表格高度
+    },
     fixedNumberList: {
       handler() {
         this.$nextTick(() => {
@@ -577,10 +615,8 @@ export default {
       },
       deep: true
     },
-    // 监听loading变化
     loading(newVal) {
       if (!newVal) {
-        // 数据加载完成后设置表格高度
         this.$nextTick(() => {
           setTimeout(() => {
             this.setTableHeight();
@@ -1039,19 +1075,16 @@ export default {
         warehouseId: this.queryParams.warehouseId,
         departmentId: this.queryParams.departmentId,
         detailList: this.fixedNumberList.map(item => {
+          const materialId = item.material ? item.material.id : item.materialId || null;
           return {
-            materialId: item.material ? item.material.id : null,
-            materialCode: item.code,
-            materialName: item.name,
-            specification: item.specification,
-            model: item.model,
-            supplierId: item.material && item.material.supplier ? item.material.supplier.id : null,
-            unitId: item.material && item.material.fdUnit ? item.material.fdUnit.unitId : null,
-            price: item.price,
-            factoryId: item.material && item.material.fdFactory ? item.material.fdFactory.factoryId : null,
-            warehouseCategoryId: item.material && item.material.fdWarehouseCategory ? item.material.fdWarehouseCategory.warehouseCategoryId : null,
-            financeCategoryId: item.material && item.material.fdFinanceCategory ? item.material.fdFinanceCategory.financeCategoryId : null,
-            isBilling: item.material ? item.material.isBilling : null
+            materialId,
+            upperLimit: item.upperLimit != null ? item.upperLimit : 0,
+            lowerLimit: item.lowerLimit != null ? item.lowerLimit : 0,
+            expiryReminder: item.expiryReminder,
+            monitoring: item.monitoring != null ? item.monitoring : '1',
+            location: item.location,
+            locationId: item.locationId || null,
+            remark: item.remark
           };
         })
       };
@@ -1136,8 +1169,10 @@ export default {
             upperLimit: null, // 上限
             lowerLimit: null, // 下限
             expiryReminder: null, // 有效期提醒
-            monitoring: '2', // 监测，默认为未监控（'2'）
-            location: null, // 货位
+            monitoring: '2',
+            location: null,
+            locationId: null,
+            remark: null,
             factoryName: (material.fdFactory && material.fdFactory.factoryName) || null, // 生产厂家
             registerNo: material.registerNo || null, // 注册证号
             warehouseCategoryName: (material.fdWarehouseCategory && material.fdWarehouseCategory.warehouseCategoryName) || '--', // 库房分类
@@ -1163,6 +1198,27 @@ export default {
       this.addDialogVisible = false;
       // 清空弹窗选择
       this.addSelectedMaterials = [];
+    },
+    loadFixedNumberLocations() {
+      this.fixedNumberLocationOptions = [];
+      if (this.queryParams.fixedNumberType !== '1' || !this.queryParams.warehouseId) {
+        return;
+      }
+      listLocationAll({ warehouseId: this.queryParams.warehouseId }).then(response => {
+        this.fixedNumberLocationOptions = response || [];
+      }).catch(() => {
+        this.fixedNumberLocationOptions = [];
+      });
+    },
+    onFixedNumberLocationChange(row, locationId) {
+      row.locationId = locationId != null && locationId !== '' ? locationId : null;
+      if (row.locationId == null) {
+        row.location = null;
+      } else {
+        const opt = this.fixedNumberLocationOptions.find(o => o.locationId === locationId);
+        row.location = opt ? opt.locationName : row.location;
+      }
+      this.handleFieldChange(row);
     },
     /** 根据仓库ID获取仓库名称 */
     getWarehouseNameById(warehouseId) {
