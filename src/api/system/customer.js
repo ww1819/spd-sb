@@ -109,3 +109,30 @@ export function resetMaterialFunctions(customerId) {
     method: 'put'
   })
 }
+
+/** 平台级全库初始化（耗材侧 Controller，body.confirmToken 须与后端一致） */
+export function initFullDatabase(confirmToken) {
+  return request({
+    url: '/material/system/customer/initFullDatabase',
+    method: 'post',
+    data: { confirmToken }
+  })
+}
+
+/** 按客户物理删除设备侧数据 */
+export function purgeEquipmentData(customerId) {
+  return request({
+    url: '/equipment/system/customer/' + customerId + '/purgeEquipmentData',
+    method: 'post',
+    data: { confirm: 'PURGE_EQ' }
+  })
+}
+
+/** 设备客户列表行内：清理该租户耗材数据（走设备 Controller，与后端一致） */
+export function purgeConsumablesData(customerId) {
+  return request({
+    url: '/equipment/system/customer/' + customerId + '/purgeConsumablesData',
+    method: 'post',
+    data: { confirm: 'PURGE_HC' }
+  })
+}

@@ -17,3 +17,21 @@ export function getCustomerPeriodLogs(tenantId) {
     params: { tenantId }
   })
 }
+
+/** 平台级全库初始化（与 spd-ui 共用后端） */
+export function initFullDatabase(confirmToken) {
+  return request({
+    url: '/material/system/customer/initFullDatabase',
+    method: 'post',
+    data: { confirmToken }
+  })
+}
+
+/** 按租户清理耗材数据（material 路径） */
+export function purgeConsumablesData(customerId) {
+  return request({
+    url: '/material/system/customer/' + customerId + '/purgeConsumablesData',
+    method: 'post',
+    data: { confirm: 'PURGE_HC' }
+  })
+}

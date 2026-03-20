@@ -73,6 +73,16 @@
           v-hasPermi="['hc:system:customer:list']"
         >删除</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="danger"
+          plain
+          icon="el-icon-warning-outline"
+          size="small"
+          @click="openFullInitDialog"
+          v-hasPermi="['hc:system:customer:initDb']"
+        >全库初始化</el-button>
+      </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
@@ -99,7 +109,7 @@
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="420" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="520" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button
             size="mini"
@@ -159,6 +169,14 @@
             @click="handleDelete(scope.row)"
             v-hasPermi="['hc:system:customer:list']"
           >删除</el-button>
+          <el-button
+            size="mini"
+            type="text"
+            class="text-danger"
+            icon="el-icon-remove-outline"
+            @click="handlePurgeHc(scope.row)"
+            v-hasPermi="['hc:system:customer:purgeHc']"
+          >清理耗材数据</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -231,6 +249,15 @@
       </div>
     </el-dialog>
 
+    <el-dialog title="全库初始化（高危）" :visible.sync="openFullInit" width="520px" append-to-body @close="fullInitTokenInput = ''">
+      <el-alert type="error" :closable="false" show-icon title="将清空所有租户与业务数据，仅保留 admin 与平台菜单/字典等。执行前请务必备份数据库。" style="margin-bottom: 12px" />
+      <p style="color:#606266;font-size:13px;margin-bottom:8px">请在下方输入确认口令（区分大小写）：</p>
+      <el-input v-model="fullInitTokenInput" placeholder="CONFIRM_PURGE_ALL_TENANT_DATA" clearable />
+      <div slot="footer" class="dialog-footer">
+        <el-button type="danger" :disabled="fullInitTokenInput !== FULL_INIT_TOKEN" @click="submitFullInit">确认执行</el-button>
+        <el-button @click="openFullInit = false">取 消</el-button>
+      </div>
+    </el-dialog>
     <!-- 启停用操作（直接输入原因） -->
     <el-dialog :title="statusDialogTitle" :visible.sync="openStatus" width="480px" append-to-body>
       <el-form ref="statusForm" :model="statusForm" :rules="statusRules" label-width="80px">
@@ -343,7 +370,7 @@ import {
   resetEquipmentFunctions,
   resetMaterialFunctions
 } from '@/api/system/customer'
-import { getCustomerStatusLogs, getCustomerPeriodLogs } from '@/api/material/customer'
+import { getCustomerStatusLogs, getCustomerPeriodLogs, initFullDatabase, purgeConsumablesData } from '@/api/material/customer'
 import { treeselectForCustomerAssign } from '@/api/system/menu'
 
 export default {
@@ -388,6 +415,9 @@ export default {
       menuNodeAll: false,
       menuCheckStrictly: true,
       menuForm: { customerId: '', customerName: '' },
+      openFullInit: false,
+      fullInitTokenInput: '',
+      FULL_INIT_TOKEN: 'CONFIRM_PURGE_ALL_TENANT_DATA',
       queryParams: {
         pageNum: 1,
         pageSize: 10,
@@ -605,6 +635,30 @@ export default {
         this.getList()
       }).catch(() => {})
     },
+    openFullInitDialog() {
+      this.fullInitTokenInput = ''
+      this.openFullInit = true
+    },
+    submitFullInit() {
+      if (this.fullInitTokenInput !== this.FULL_INIT_TOKEN) {
+        this.$modal.msgError('口令不正确')
+        return
+      }
+      initFullDatabase(this.fullInitTokenInput).then(res => {
+        this.$modal.msgSuccess((res && res.msg) || '已提交全库初始化')
+        this.openFullInit = false
+        this.fullInitTokenInput = ''
+      }).catch(() => {})
+    },
+    handlePurgeHc(row) {
+      const name = row.customerName || row.customerId
+      this.$modal.confirm('确认物理删除租户「' + name + '」下全部耗材业务数据（含该租户用户，不删除客户主档）？此操作不可恢复。').then(() => {
+        return purgeConsumablesData(row.customerId)
+      }).then(res => {
+        this.$modal.msgSuccess((res && res.msg) || '清理完成')
+        this.getList()
+      }).catch(() => {})
+    },
     submitMenuForm() {
       const tree = this.$refs.menuTree
       const checkedKeys = tree.getCheckedKeys()
@@ -624,5 +678,8 @@ export default {
   margin-bottom: 12px;
   font-weight: 600;
   color: #303133;
+}
+.text-danger {
+  color: #f56c6c;
 }
 </style>

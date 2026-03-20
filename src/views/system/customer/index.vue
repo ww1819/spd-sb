@@ -73,6 +73,16 @@
           v-hasPermi="['sb:system:customer:remove']"
         >删除</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="danger"
+          plain
+          icon="el-icon-warning-outline"
+          size="small"
+          @click="openFullInitDialog"
+          v-hasPermi="['hc:system:customer:initDb']"
+        >全库初始化</el-button>
+      </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
@@ -99,7 +109,7 @@
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="420" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="580" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button
             size="mini"
@@ -159,6 +169,22 @@
             @click="handleDelete(scope.row)"
             v-hasPermi="['sb:system:customer:remove']"
           >删除</el-button>
+          <el-button
+            size="mini"
+            type="text"
+            class="text-danger"
+            icon="el-icon-cpu"
+            @click="handlePurgeEq(scope.row)"
+            v-hasPermi="['sb:system:customer:purgeEq']"
+          >清理设备数据</el-button>
+          <el-button
+            size="mini"
+            type="text"
+            class="text-danger"
+            icon="el-icon-remove-outline"
+            @click="handlePurgeHc(scope.row)"
+            v-hasPermi="['hc:system:customer:purgeHc']"
+          >清理耗材数据</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -296,6 +322,15 @@
       </div>
     </el-dialog>
 
+    <el-dialog title="全库初始化（高危）" :visible.sync="openFullInit" width="520px" append-to-body @close="fullInitTokenInput = ''">
+      <el-alert type="error" :closable="false" show-icon title="将清空所有租户与业务数据，仅保留 admin 与平台菜单/字典等。执行前请务必备份数据库。" style="margin-bottom: 12px" />
+      <p style="color:#606266;font-size:13px;margin-bottom:8px">请在下方输入确认口令（区分大小写）：</p>
+      <el-input v-model="fullInitTokenInput" placeholder="CONFIRM_PURGE_ALL_TENANT_DATA" clearable />
+      <div slot="footer" class="dialog-footer">
+        <el-button type="danger" :disabled="fullInitTokenInput !== FULL_INIT_TOKEN" @click="submitFullInit">确认执行</el-button>
+        <el-button @click="openFullInit = false">取 消</el-button>
+      </div>
+    </el-dialog>
     <!-- 设备客户权限：维护客户可用的设备菜单（含目录、菜单及按钮权限） -->
     <el-dialog title="设备客户权限" :visible.sync="openMenu" width="520px" append-to-body>
       <el-form label-width="80px">
@@ -351,7 +386,10 @@ import {
   getCustomerPeriodLogs,
   getTenantEnumList,
   resetEquipmentFunctions,
-  resetMaterialFunctions
+  resetMaterialFunctions,
+  initFullDatabase,
+  purgeEquipmentData,
+  purgeConsumablesData
 } from '@/api/system/customer'
 import { treeselectForCustomerAssign } from '@/api/system/menu'
 
@@ -397,6 +435,9 @@ export default {
       menuNodeAll: false,
       menuCheckStrictly: true,
       menuForm: { customerId: '', customerName: '' },
+      openFullInit: false,
+      fullInitTokenInput: '',
+      FULL_INIT_TOKEN: 'CONFIRM_PURGE_ALL_TENANT_DATA',
       queryParams: {
         pageNum: 1,
         pageSize: 10,
@@ -618,6 +659,39 @@ export default {
         this.getList()
       }).catch(() => {})
     },
+    openFullInitDialog() {
+      this.fullInitTokenInput = ''
+      this.openFullInit = true
+    },
+    submitFullInit() {
+      if (this.fullInitTokenInput !== this.FULL_INIT_TOKEN) {
+        this.$modal.msgError('口令不正确')
+        return
+      }
+      initFullDatabase(this.fullInitTokenInput).then(res => {
+        this.$modal.msgSuccess((res && res.msg) || '已提交全库初始化')
+        this.openFullInit = false
+        this.fullInitTokenInput = ''
+      }).catch(() => {})
+    },
+    handlePurgeEq(row) {
+      const name = row.customerName || row.customerId
+      this.$modal.confirm('确认物理删除租户「' + name + '」下全部设备业务数据（不删除客户主档）？不可恢复。').then(() => {
+        return purgeEquipmentData(row.customerId)
+      }).then(res => {
+        this.$modal.msgSuccess((res && res.msg) || '清理完成')
+        this.getList()
+      }).catch(() => {})
+    },
+    handlePurgeHc(row) {
+      const name = row.customerName || row.customerId
+      this.$modal.confirm('确认物理删除租户「' + name + '」下全部耗材业务数据（含该租户用户，不删除客户主档）？不可恢复。').then(() => {
+        return purgeConsumablesData(row.customerId)
+      }).then(res => {
+        this.$modal.msgSuccess((res && res.msg) || '清理完成')
+        this.getList()
+      }).catch(() => {})
+    },
     submitMenuForm() {
       const tree = this.$refs.menuTree
       const checkedKeys = tree.getCheckedKeys()
@@ -642,5 +716,8 @@ export default {
   color: #909399;
   font-size: 12px;
   margin-right: 4px;
+}
+.text-danger {
+  color: #f56c6c;
 }
 </style>
