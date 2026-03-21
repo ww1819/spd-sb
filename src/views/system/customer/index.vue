@@ -99,7 +99,12 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="计划停用时间" align="center" width="180">
+      <el-table-column label="耗材系统计划停用时间" align="center" width="190">
+        <template slot-scope="scope">
+          <span>{{ scope.row.hcPlannedDisableTime ? parseTime(scope.row.hcPlannedDisableTime, '{y}-{m}-{d} {h}:{i}') : '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="设备系统计划停用时间" align="center" width="190">
         <template slot-scope="scope">
           <span>{{ scope.row.plannedDisableTime ? parseTime(scope.row.plannedDisableTime, '{y}-{m}-{d} {h}:{i}') : '-' }}</span>
         </template>
@@ -198,7 +203,7 @@
     />
 
     <!-- 新增/修改客户 -->
-    <el-dialog :title="title" :visible.sync="open" width="520px" append-to-body>
+    <el-dialog :title="title" :visible.sync="open" width="560px" append-to-body>
       <el-form ref="form" :model="form" :rules="rules" label-width="120px">
         <el-form-item v-if="!form.customerId" label="租户类型" prop="tenantKey">
           <el-select
@@ -237,12 +242,22 @@
             :disabled="!!selectedTenantEnum"
           />
         </el-form-item>
-        <el-form-item label="计划停用时间" prop="plannedDisableTime">
+        <el-form-item label="耗材系统计划停用时间" prop="hcPlannedDisableTime">
+          <el-date-picker
+            v-model="form.hcPlannedDisableTime"
+            type="datetime"
+            value-format="yyyy-MM-dd HH:mm:ss"
+            placeholder="到达后租户无法使用耗材系统（可选）"
+            style="width: 100%"
+            :picker-options="pickerOptions"
+          />
+        </el-form-item>
+        <el-form-item label="设备系统计划停用时间" prop="plannedDisableTime">
           <el-date-picker
             v-model="form.plannedDisableTime"
             type="datetime"
             value-format="yyyy-MM-dd HH:mm:ss"
-            placeholder="选择计划停用时间（可选）"
+            placeholder="到达后租户无法使用设备系统（可选）"
             style="width: 100%"
             :picker-options="pickerOptions"
           />
@@ -502,6 +517,8 @@ export default {
         customerCode: undefined,
         tenantKey: undefined,
         status: '0',
+        hcStatus: '0',
+        hcPlannedDisableTime: undefined,
         plannedDisableTime: undefined,
         remark: undefined
       }

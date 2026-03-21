@@ -35,3 +35,12 @@ export function purgeConsumablesData(customerId) {
     data: { confirm: 'PURGE_HC' }
   })
 }
+
+/** 按租户物理删除设备侧数据（equipment 路径，与系统客户页一致） */
+export function purgeEquipmentData(customerId) {
+  return request({
+    url: '/equipment/system/customer/' + customerId + '/purgeEquipmentData',
+    method: 'post',
+    data: { confirm: 'PURGE_EQ' }
+  })
+}

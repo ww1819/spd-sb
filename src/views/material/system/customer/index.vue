@@ -99,7 +99,12 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="计划停用时间" align="center" width="180">
+      <el-table-column label="耗材系统计划停用时间" align="center" width="190">
+        <template slot-scope="scope">
+          <span>{{ scope.row.hcPlannedDisableTime ? parseTime(scope.row.hcPlannedDisableTime, '{y}-{m}-{d} {h}:{i}') : '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="设备系统计划停用时间" align="center" width="190">
         <template slot-scope="scope">
           <span>{{ scope.row.plannedDisableTime ? parseTime(scope.row.plannedDisableTime, '{y}-{m}-{d} {h}:{i}') : '-' }}</span>
         </template>
@@ -109,7 +114,7 @@
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="520" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="620" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button
             size="mini"
@@ -177,6 +182,14 @@
             @click="handlePurgeHc(scope.row)"
             v-hasPermi="['hc:system:customer:purgeHc']"
           >清理耗材数据</el-button>
+          <el-button
+            size="mini"
+            type="text"
+            class="text-danger"
+            icon="el-icon-delete"
+            @click="handlePurgeEq(scope.row)"
+            v-hasPermi="['sb:system:customer:purgeEq']"
+          >清理设备数据</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -190,7 +203,7 @@
     />
 
     <!-- 新增/修改客户 -->
-    <el-dialog :title="title" :visible.sync="open" width="520px" append-to-body>
+    <el-dialog :title="title" :visible.sync="open" width="560px" append-to-body>
       <el-form ref="form" :model="form" :rules="rules" label-width="120px">
         <el-form-item v-if="!form.customerId" label="租户类型" prop="tenantKey">
           <el-select
@@ -229,12 +242,22 @@
             :disabled="!!selectedTenantEnum"
           />
         </el-form-item>
-        <el-form-item label="计划停用时间" prop="plannedDisableTime">
+        <el-form-item label="耗材系统计划停用时间" prop="hcPlannedDisableTime">
+          <el-date-picker
+            v-model="form.hcPlannedDisableTime"
+            type="datetime"
+            value-format="yyyy-MM-dd HH:mm:ss"
+            placeholder="到达后租户无法使用耗材系统（可选）"
+            style="width: 100%"
+            :picker-options="pickerOptions"
+          />
+        </el-form-item>
+        <el-form-item label="设备系统计划停用时间" prop="plannedDisableTime">
           <el-date-picker
             v-model="form.plannedDisableTime"
             type="datetime"
             value-format="yyyy-MM-dd HH:mm:ss"
-            placeholder="选择计划停用时间（可选）"
+            placeholder="到达后租户无法使用设备系统（可选）"
             style="width: 100%"
             :picker-options="pickerOptions"
           />
@@ -370,7 +393,7 @@ import {
   resetEquipmentFunctions,
   resetMaterialFunctions
 } from '@/api/system/customer'
-import { getCustomerStatusLogs, getCustomerPeriodLogs, initFullDatabase, purgeConsumablesData } from '@/api/material/customer'
+import { getCustomerStatusLogs, getCustomerPeriodLogs, initFullDatabase, purgeConsumablesData, purgeEquipmentData } from '@/api/material/customer'
 import { treeselectForCustomerAssign } from '@/api/system/menu'
 
 export default {
@@ -482,6 +505,8 @@ export default {
         customerCode: undefined,
         tenantKey: undefined,
         status: '0',
+        hcStatus: '0',
+        hcPlannedDisableTime: undefined,
         plannedDisableTime: undefined,
         remark: undefined
       }
@@ -654,6 +679,15 @@ export default {
       const name = row.customerName || row.customerId
       this.$modal.confirm('确认物理删除租户「' + name + '」下全部耗材业务数据（含该租户用户，不删除客户主档）？此操作不可恢复。').then(() => {
         return purgeConsumablesData(row.customerId)
+      }).then(res => {
+        this.$modal.msgSuccess((res && res.msg) || '清理完成')
+        this.getList()
+      }).catch(() => {})
+    },
+    handlePurgeEq(row) {
+      const name = row.customerName || row.customerId
+      this.$modal.confirm('确认物理删除租户「' + name + '」下全部设备业务数据（不删除客户主档）？不可恢复。').then(() => {
+        return purgeEquipmentData(row.customerId)
       }).then(res => {
         this.$modal.msgSuccess((res && res.msg) || '清理完成')
         this.getList()
