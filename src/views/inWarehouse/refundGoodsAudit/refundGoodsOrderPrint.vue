@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="refund-goods-print" ref="receiptRefundGoodsPrintRef" hidden="hidden">
 <!--    <div class="title" style="padding-top: 15px">入库单</div>-->
     <div style="font-size: 22px;text-align: center;">
@@ -32,7 +32,7 @@
         <td>{{ item.materialName || '' }}</td>
         <td>{{ item.materialSpeci || '' }}</td>
 <!--        <td>{{ item.planQuantity }}</td>-->
-        <td>{{ formatAmount(item.price) }}</td>
+        <td>{{ formatAmount(item.unitPrice != null ? item.unitPrice : item.price) }}</td>
         <td>{{ item.qty || '' }}</td>
         <td>{{ formatAmount(item.amt) }}</td>
         <td>{{ item.batchNumber || '' }}</td>
