@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <div class="form-fields-container">
       <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="80px">
@@ -603,8 +603,8 @@ export default {
         obj.amt = item.amt;
         obj.batchNo = item.batchNo;
         obj.batchNumber = item.materialNo;
-        obj.beginTime = item.beginTime;
-        obj.endTime = item.endTime;
+        obj.beginTime = item.beginTime || item.beginDate || null;
+        obj.endTime = item.endTime || item.endDate || null;
         obj.remark = item.remark;
         obj.material = item.material;
         this.stkIoBillEntryList.push(obj);
