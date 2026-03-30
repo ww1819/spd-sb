@@ -31,6 +31,18 @@ export function getCustomerOptions() {
   })
 }
 
+// 平台管理员切换租户并重签 super_01 token
+export function switchTenant(customerId, systemType = 'equipment') {
+  return request({
+    url: '/switchTenant',
+    method: 'post',
+    data: {
+      customerId,
+      systemType
+    }
+  })
+}
+
 // 注册方法
 export function register(data) {
   return request({
