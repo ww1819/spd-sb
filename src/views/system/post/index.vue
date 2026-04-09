@@ -624,6 +624,22 @@ export default {
         if (e !== "cancel") this.$modal.msgError(e?.msg || e?.message || "同步科室权限失败");
       });
     },
+    /** 用户详情中科室/仓库/菜单/工作组 ID 多在响应根级；若仅从 axios 根取漏了嵌套，回退 data，避免误传空数组清空 sb_work_group_user */
+    pickSbUserAssociationsFromDetail(userResponse) {
+      const d = userResponse && userResponse.data ? userResponse.data : {};
+      const numArr = (a) => (Array.isArray(a) ? a.map(Number).filter(n => !isNaN(n)) : []);
+      const strArr = (a) => (Array.isArray(a) ? a.map(String).filter(s => s) : []);
+      const wh = userResponse.warehouseIds != null ? userResponse.warehouseIds : d.warehouseIds;
+      const dept = userResponse.departmentIds != null ? userResponse.departmentIds : d.departmentIds;
+      const menu = userResponse.menuIds != null ? userResponse.menuIds : d.menuIds;
+      const wg = userResponse.workGroupIds != null ? userResponse.workGroupIds : d.workGroupIds;
+      return {
+        warehouseIds: numArr(wh),
+        departmentIds: numArr(dept),
+        menuIds: strArr(menu),
+        workGroupIds: strArr(wg)
+      };
+    },
     /** 获取工作组下的所有用户（从 sb_work_group_user 接口取组内用户ID，再拉取详情供同步权限用） */
     getUsersByPostId(postId) {
       return listUserIdsByGroupId(postId).then(res => {
@@ -644,13 +660,14 @@ export default {
         }
         const updatePromises = users.map(userResponse => {
           const userData = userResponse.data;
+          const assoc = this.pickSbUserAssociationsFromDetail(userResponse);
           const payload = {
             ...userData,
             userId: userData.userId,
             menuIds: menuIds,
-            workGroupIds: userResponse.workGroupIds || [],
-            departmentIds: userResponse.departmentIds || [],
-            warehouseIds: userResponse.warehouseIds || []
+            workGroupIds: assoc.workGroupIds,
+            departmentIds: assoc.departmentIds,
+            warehouseIds: assoc.warehouseIds
           };
           return updateUser(payload);
         });
@@ -676,13 +693,14 @@ export default {
         }
         const updatePromises = users.map(userResponse => {
           const userData = userResponse.data;
+          const assoc = this.pickSbUserAssociationsFromDetail(userResponse);
           const payload = {
             ...userData,
             userId: userData.userId,
             warehouseIds: warehouseIds,
-            workGroupIds: userResponse.workGroupIds || [],
-            menuIds: userResponse.menuIds || [],
-            departmentIds: userResponse.departmentIds || []
+            workGroupIds: assoc.workGroupIds,
+            menuIds: assoc.menuIds,
+            departmentIds: assoc.departmentIds
           };
           return updateUser(payload);
         });
@@ -708,13 +726,14 @@ export default {
         }
         const updatePromises = users.map(userResponse => {
           const userData = userResponse.data;
+          const assoc = this.pickSbUserAssociationsFromDetail(userResponse);
           const payload = {
             ...userData,
             userId: userData.userId,
             departmentIds: departmentIds,
-            workGroupIds: userResponse.workGroupIds || [],
-            menuIds: userResponse.menuIds || [],
-            warehouseIds: userResponse.warehouseIds || []
+            workGroupIds: assoc.workGroupIds,
+            menuIds: assoc.menuIds,
+            warehouseIds: assoc.warehouseIds
           };
           return updateUser(payload);
         });
