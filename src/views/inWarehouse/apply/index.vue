@@ -346,19 +346,58 @@
             </template>
           </el-table-column>-->
 
-          <el-table-column label="名称" align="center" width="180" show-overflow-tooltip resizable sortable>
+          <el-table-column
+            label="名称"
+            align="left"
+            header-align="center"
+            width="240"
+            min-width="180"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-text-wrap"
+            resizable
+            sortable
+          >
             <template slot-scope="scope">
-              <span>{{ (scope.row.material && scope.row.material.name) || '--' }}</span>
+              <span
+                class="detail-text-cell-2line"
+                :title="(scope.row.material && scope.row.material.name) || '--'"
+              >{{ (scope.row.material && scope.row.material.name) || '--' }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="规格" align="center" width="180" show-overflow-tooltip resizable sortable>
+          <el-table-column
+            label="规格"
+            align="left"
+            header-align="center"
+            width="200"
+            min-width="150"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-text-wrap"
+            resizable
+            sortable
+          >
             <template slot-scope="scope">
-              <span>{{ (scope.row.material && scope.row.material.speci) || '--' }}</span>
+              <span
+                class="detail-text-cell-2line"
+                :title="(scope.row.material && scope.row.material.speci) || '--'"
+              >{{ (scope.row.material && scope.row.material.speci) || '--' }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="型号" align="center" width="180" show-overflow-tooltip resizable sortable>
+          <el-table-column
+            label="型号"
+            align="left"
+            header-align="center"
+            width="200"
+            min-width="150"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-text-wrap"
+            resizable
+            sortable
+          >
             <template slot-scope="scope">
-              <span>{{ (scope.row.material && scope.row.material.model) || '--' }}</span>
+              <span
+                class="detail-text-cell-2line"
+                :title="(scope.row.material && scope.row.material.model) || '--'"
+              >{{ (scope.row.material && scope.row.material.model) || '--' }}</span>
             </template>
           </el-table-column>
           <el-table-column label="单位" align="center" width="80" min-width="80" show-overflow-tooltip resizable sortable>
@@ -407,20 +446,55 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="批号" align="center" prop="batchNumber" width="200" show-overflow-tooltip resizable sortable>
+          <el-table-column
+            label="批号"
+            align="center"
+            prop="batchNumber"
+            width="200"
+            min-width="180"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-multiline"
+            resizable
+            sortable
+          >
             <template slot-scope="scope">
-              <el-input v-model="scope.row.batchNumber"  placeholder="请输入批号" />
+              <div class="detail-cell-edit-wrap">
+                <el-input
+                  v-model="scope.row.batchNumber"
+                  type="textarea"
+                  :autosize="{ minRows: 2, maxRows: 6 }"
+                  placeholder="请输入批号"
+                  size="small"
+                  class="detail-input-multiline"
+                />
+              </div>
             </template>
           </el-table-column>
-          <el-table-column label="有效期" align="center" prop="endTime" width="180" show-overflow-tooltip resizable sortable>
+          <el-table-column
+            label="有效期"
+            align="center"
+            prop="endTime"
+            width="200"
+            min-width="180"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-date"
+            resizable
+            sortable
+          >
             <template slot-scope="scope">
-              <el-date-picker clearable
-                              v-model="scope.row.endTime"
-                              type="date"
-                              value-format="yyyy-MM-dd"
-                              :picker-options="pickerEndTimeOptions"
-                              placeholder="请选择入库日期">
-              </el-date-picker>
+              <div class="detail-cell-edit-wrap">
+                <el-date-picker
+                  clearable
+                  v-model="scope.row.endTime"
+                  type="date"
+                  value-format="yyyy-MM-dd"
+                  :picker-options="pickerEndTimeOptions"
+                  placeholder="有效期"
+                  size="small"
+                  class="detail-date-expiry"
+                  style="width: 100%"
+                />
+              </div>
             </template>
           </el-table-column>
           <el-table-column label="生产日期" align="center" prop="beginTime" width="180" show-overflow-tooltip resizable sortable>
@@ -434,14 +508,47 @@
               </el-date-picker>
             </template>
           </el-table-column>
-          <el-table-column label="批次号" align="center" prop="batchNo" width="200" show-overflow-tooltip resizable sortable>
+          <el-table-column
+            label="批次号"
+            align="center"
+            prop="batchNo"
+            width="200"
+            min-width="180"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-multiline"
+            resizable
+            sortable
+          >
             <template slot-scope="scope">
-              <el-input v-model="scope.row.batchNo" :disabled="true" placeholder="请输入批次号" />
+              <div class="detail-cell-edit-wrap">
+                <el-input
+                  v-model="scope.row.batchNo"
+                  type="textarea"
+                  :autosize="{ minRows: 2, maxRows: 6 }"
+                  :disabled="true"
+                  placeholder="批次号"
+                  size="small"
+                  class="detail-input-multiline"
+                />
+              </div>
             </template>
           </el-table-column>
-          <el-table-column label="生产厂家" align="center" width="180" show-overflow-tooltip resizable sortable>
+          <el-table-column
+            label="生产厂家"
+            align="left"
+            header-align="center"
+            width="260"
+            min-width="200"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-text-wrap"
+            resizable
+            sortable
+          >
             <template slot-scope="scope">
-              <span>{{ (scope.row.material && scope.row.material.fdFactory && scope.row.material.fdFactory.factoryName) || '--' }}</span>
+              <span
+                class="detail-text-cell-2line"
+                :title="(scope.row.material && scope.row.material.fdFactory && scope.row.material.fdFactory.factoryName) || '--'"
+              >{{ (scope.row.material && scope.row.material.fdFactory && scope.row.material.fdFactory.factoryName) || '--' }}</span>
             </template>
           </el-table-column>
           <el-table-column label="包装规格" align="center" width="180" show-overflow-tooltip resizable sortable>
@@ -1488,7 +1595,7 @@ export default {
   line-height: 28px !important;
 }
 
-.local-modal-content .modal-form-compact image.png.el-date-editor.el-input {
+.local-modal-content .modal-form-compact .el-date-editor.el-input {
   height: 28px !important;
 }
 
@@ -1519,6 +1626,36 @@ export default {
   flex: 1;
   overflow: hidden;
   margin-top: 10px;
+}
+
+/* 批号/批次号多行、有效期加宽（与 spd-ui 添加入库一致） */
+.local-modal-content .table-wrapper .el-table .detail-cell-edit-wrap {
+  text-align: left;
+  padding: 2px 0;
+}
+.local-modal-content .table-wrapper .el-table .detail-input-multiline {
+  width: 100% !important;
+  max-width: none !important;
+}
+.local-modal-content .table-wrapper .el-table ::v-deep .detail-input-multiline .el-textarea__inner {
+  min-height: 44px !important;
+  line-height: 1.45 !important;
+  padding: 8px 10px !important;
+  font-size: 13px !important;
+  resize: vertical;
+}
+.local-modal-content .table-wrapper .el-table .detail-date-expiry {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 172px !important;
+}
+.local-modal-content .table-wrapper .el-table .detail-date-expiry.el-date-editor.el-input {
+  width: 100% !important;
+  min-width: 172px !important;
+}
+.local-modal-content .table-wrapper .el-table ::v-deep .detail-date-expiry .el-input__inner {
+  padding-left: 10px !important;
+  padding-right: 34px !important;
 }
 
 .local-modal-content .el-table {
@@ -1679,6 +1816,37 @@ export default {
 /* 确保页面容器有相对定位，以便内部弹窗正确定位 */
 .app-container {
   position: relative;
+}
+
+/* 添加入库弹窗：批号/批次号/有效期列单元格允许多行 */
+.local-modal-content .table-wrapper .el-table td.detail-col-multiline .cell,
+.local-modal-content .table-wrapper .el-table td.detail-col-date .cell {
+  white-space: normal;
+  word-break: break-word;
+  vertical-align: middle;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* 名称、规格、型号、生产厂家：左上对齐，最多两行；明细表行顶对齐以利行高随内容变化 */
+.local-modal-content .table-wrapper .el-table tbody td {
+  vertical-align: top;
+}
+.local-modal-content .table-wrapper .el-table td.detail-col-text-wrap .cell {
+  vertical-align: top;
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+  padding: 8px 10px 8px 12px;
+}
+.local-modal-content .table-wrapper .el-table td.detail-col-text-wrap .detail-text-cell-2line {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+  line-height: 1.45;
+  max-height: calc(1.45em * 2 + 2px);
 }
 
 /* 覆盖弹窗组件的高度 - 调高添加弹窗中的弹窗高度 */

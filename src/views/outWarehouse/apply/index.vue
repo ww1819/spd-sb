@@ -295,7 +295,7 @@
           <div v-show="action">
             <el-col :span="1.5">
   <!--            <el-button type="primary" icon="el-icon-plus" size="small" @click="handleAddStkIoBillEntry">添加</el-button>-->
-              <el-button type="primary" icon="el-icon-plus" size="small" @click="nameBtn" :disabled="!form.warehouseId">添加</el-button>
+              <el-button type="primary" icon="el-icon-plus" size="small" @click="nameBtn">添加</el-button>
             </el-col>
             <el-col :span="1.5">
               <el-button type="outline" icon="el-icon-ref" size="small" @click="refDeptApply">引用科室申请单</el-button>
@@ -635,8 +635,12 @@ export default {
       });
     },
     nameBtn() {
-      if(!this.form.warehouseId) {
+      if (!this.form.warehouseId) {
         this.$message({ message: '请先选择仓库', type: 'warning' })
+        return
+      }
+      if (!this.form.departmentId) {
+        this.$message({ message: '请先选择科室', type: 'warning' })
         return
       }
 
@@ -645,8 +649,12 @@ export default {
       this.warehouseValue = this.form.warehouseId;
     },
     refDeptApply() {
-      if(!this.form.warehouseId) {
+      if (!this.form.warehouseId) {
         this.$message({ message: '请先选择仓库', type: 'warning' })
+        return
+      }
+      if (!this.form.departmentId) {
+        this.$message({ message: '请先选择科室', type: 'warning' })
         return
       }
 
@@ -656,8 +664,12 @@ export default {
       this.departmentValue = this.form.departmentId;
     },
     refRkApply() {
-      if(!this.form.warehouseId) {
+      if (!this.form.warehouseId) {
         this.$message({ message: '请先选择仓库', type: 'warning' })
+        return
+      }
+      if (!this.form.departmentId) {
+        this.$message({ message: '请先选择科室', type: 'warning' })
         return
       }
 
