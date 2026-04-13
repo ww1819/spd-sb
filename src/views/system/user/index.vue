@@ -921,7 +921,20 @@ export default {
       console.log('开始提交授权 - 当前 menuIds:', this.authForm.menuIds);
       // 先获取完整的用户信息，然后合并权限数据
       getUser(this.authForm.userId).then(response => {
-        const userData = response.data;
+        const userData = response.data ? { ...response.data } : {};
+        // 详情接口把 postIds/roleIds/workGroupIds 放在响应根级，与 data 并列；仅展开 data 会导致 postIds 为空，
+        // 而后端 updateUser 会先删 sys_user_post 再插，耗材工作组会整表丢失。
+        delete userData.postIds;
+        delete userData.roleIds;
+        delete userData.workGroupIds;
+        const postIdsSrc = response.postIds != null ? response.postIds : [];
+        const postIdsNorm = Array.isArray(postIdsSrc)
+          ? postIdsSrc.map(id => Number(id)).filter(id => !isNaN(id))
+          : [];
+        const roleIdsSrc = response.roleIds != null ? response.roleIds : [];
+        const roleIdsNorm = Array.isArray(roleIdsSrc)
+          ? roleIdsSrc.map(id => Number(id)).filter(id => !isNaN(id))
+          : [];
         // 设备菜单为 sb_menu，menuId 为字符串，直接使用数组
         const menuIds = Array.isArray(this.authForm.menuIds)
           ? this.authForm.menuIds.filter(id => id != null && String(id).trim() !== '')
@@ -931,8 +944,11 @@ export default {
           userId: this.authForm.userId,
           menuIds: menuIds,
           departmentIds: this.authForm.departmentIds || [],
-          warehouseIds: this.authForm.warehouseIds || []
+          warehouseIds: this.authForm.warehouseIds || [],
+          postIds: postIdsNorm,
+          roleIds: roleIdsNorm
         };
+        // 本弹窗只改菜单/科室/仓库权限，不传 workGroupIds，后端保留 sb_work_group_user（传 [] 会清空）
         return updateUser(payload);
       }).then(response => {
         this.$modal.msgSuccess("授权成功");
