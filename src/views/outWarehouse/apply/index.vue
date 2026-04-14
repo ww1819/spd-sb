@@ -298,10 +298,10 @@
               <el-button type="primary" icon="el-icon-plus" size="small" @click="nameBtn">添加</el-button>
             </el-col>
             <el-col :span="1.5">
-              <el-button type="outline" icon="el-icon-ref" size="small" @click="refDeptApply">引用科室申请单</el-button>
+              <el-button type="outline" icon="el-icon-ref" size="small" :disabled="stkIoBillEntryList.length > 0" @click="refDeptApply">引用科室申请单</el-button>
             </el-col>
             <el-col :span="1.5">
-              <el-button type="outline" icon="el-icon-ref" size="small" @click="refRkApply">引用入库单</el-button>
+              <el-button type="outline" icon="el-icon-ref" size="small" :disabled="stkIoBillEntryList.length > 0" @click="refRkApply">引用入库单</el-button>
             </el-col>
             <el-col :span="1.5">
               <el-button type="danger" icon="el-icon-delete" size="small" @click="handleDeleteStkIoBillEntry">删除</el-button>
@@ -442,6 +442,28 @@
 
     </SelectRkApply>
 
+    <el-dialog
+      title="选择出库科室"
+      :visible.sync="rkOutDeptDialogVisible"
+      append-to-body
+      width="420px"
+      :close-on-click-modal="false"
+      @close="handleRkOutDeptDialogClose"
+    >
+      <p v-if="rkOutDeptMissingHint" style="margin: 0 0 12px; color: #606266; font-size: 13px;">
+        所选入库单未填写申请科室，请指定本次出库的科室（确定后加载明细；取消则不引用）。
+      </p>
+      <el-form label-width="80px" size="small">
+        <el-form-item label="出库科室" required>
+          <SelectDepartment v-model="rkOutDeptTempId" />
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button size="small" @click="cancelRkOutDeptPick">取 消</el-button>
+        <el-button type="primary" size="small" @click="confirmRkOutDept">确 定</el-button>
+      </span>
+    </el-dialog>
+
     <el-dialog :visible.sync="modalObj.show" :title="modalObj.title" :width="modalObj.width">
       <template v-if="modalObj.component === 'print-type'">
         <el-radio-group v-model="modalObj.form.value">
@@ -473,6 +495,7 @@ import {
   listCTKWarehouse,
   createCkEntriesByDApply, createCkEntriesByRkApply
 } from "@/api/warehouse/outWarehouse";
+import { getInWarehouse } from "@/api/warehouse/warehouse";
 import { listInventoryMaterialAll } from "@/api/warehouse/inventory";
 import SelectMaterial from '@/components/SelectModel/SelectMaterial';
 import SelectWarehouse from '@/components/SelectModel/SelectWarehouse';
@@ -499,6 +522,10 @@ export default {
       DialogRkApplyComponentShow: false,
       warehouseValue: "",
       departmentValue: "",
+      rkOutDeptDialogVisible: false,
+      rkOutDeptTempId: null,
+      rkOutDeptMissingHint: false,
+      pendingRkApplyIdForCk: null,
       isShow: true,
       modalObj: {
         show: false,
@@ -649,34 +676,73 @@ export default {
       this.warehouseValue = this.form.warehouseId;
     },
     refDeptApply() {
-      if (!this.form.warehouseId) {
-        this.$message({ message: '请先选择仓库', type: 'warning' })
-        return
+      if (this.stkIoBillEntryList.length > 0) {
+        this.$message({ message: '已有出库明细时不能引用单据', type: 'warning' });
+        return;
       }
-      if (!this.form.departmentId) {
-        this.$message({ message: '请先选择科室', type: 'warning' })
-        return
-      }
-
-      //打开“弹窗组件”
-      this.DialogDApplyComponentShow = true
+      this.DialogDApplyComponentShow = true;
       this.warehouseValue = this.form.warehouseId;
       this.departmentValue = this.form.departmentId;
     },
     refRkApply() {
-      if (!this.form.warehouseId) {
-        this.$message({ message: '请先选择仓库', type: 'warning' })
-        return
+      if (this.stkIoBillEntryList.length > 0) {
+        this.$message({ message: '已有出库明细时不能引用单据', type: 'warning' });
+        return;
       }
-      if (!this.form.departmentId) {
-        this.$message({ message: '请先选择科室', type: 'warning' })
-        return
-      }
-
-      //打开“弹窗组件”
-      this.DialogRkApplyComponentShow = true
+      this.DialogRkApplyComponentShow = true;
       this.warehouseValue = this.form.warehouseId;
       this.departmentValue = this.form.departmentId;
+    },
+    isOutboundDeptEmpty(deptId) {
+      return deptId === null || deptId === undefined || deptId === ''
+        || (typeof deptId === 'string' && String(deptId).trim() === '');
+    },
+    loadCkEntriesByRkApply(rkApplyId, deptOverride) {
+      const keepCreater = this.form.createrName;
+      const keepCreateBy = this.form.createBy;
+      return createCkEntriesByRkApply({ rkApplyId: String(rkApplyId) }).then(response => {
+        if (response && response.data) {
+          this.form = response.data;
+          if (!this.form.createrName && keepCreater) {
+            this.form.createrName = keepCreater;
+          }
+          if (!this.form.createBy && keepCreateBy) {
+            this.form.createBy = keepCreateBy;
+          }
+          if (deptOverride != null && !this.isOutboundDeptEmpty(deptOverride)) {
+            this.form.departmentId = deptOverride;
+          }
+          this.stkIoBillEntryList = response.data.stkIoBillEntryList || [];
+          this.form.billStatus = '1';
+          this.form.billType = '201';
+          this.pendingRkApplyIdForCk = null;
+          this.rkOutDeptTempId = null;
+          this.rkOutDeptDialogVisible = false;
+        }
+      }).catch(() => {
+        this.$message.error('加载入库单生成出库明细失败');
+      });
+    },
+    confirmRkOutDept() {
+      if (this.isOutboundDeptEmpty(this.rkOutDeptTempId)) {
+        this.$message.error('请选择出库科室');
+        return;
+      }
+      if (this.pendingRkApplyIdForCk) {
+        this.loadCkEntriesByRkApply(this.pendingRkApplyIdForCk, this.rkOutDeptTempId);
+      }
+    },
+    cancelRkOutDeptPick() {
+      this.pendingRkApplyIdForCk = null;
+      this.rkOutDeptTempId = null;
+      this.rkOutDeptDialogVisible = false;
+    },
+    handleRkOutDeptDialogClose() {
+      this.rkOutDeptMissingHint = false;
+      if (this.pendingRkApplyIdForCk) {
+        this.pendingRkApplyIdForCk = null;
+        this.rkOutDeptTempId = null;
+      }
     },
     closeDialog() {
       //关闭“弹窗组件”
@@ -716,17 +782,22 @@ export default {
     },
 
     selectDApplyData(val) {
-      // 假设 val 是科室申请单对象或数组，取 id
       const dApplyId = Array.isArray(val) ? val[0].id : val.id;
       if (!dApplyId) return;
 
       const dApplyIdStr = String(dApplyId);
-      var param = {
-        dApplyId: dApplyIdStr
-      };
+      const param = { dApplyId: dApplyIdStr };
+      const keepCreater = this.form.createrName;
+      const keepCreateBy = this.form.createBy;
       createCkEntriesByDApply(param).then(response => {
         if (response && response.data) {
           this.form = response.data;
+          if (!this.form.createrName && keepCreater) {
+            this.form.createrName = keepCreater;
+          }
+          if (!this.form.createBy && keepCreateBy) {
+            this.form.createBy = keepCreateBy;
+          }
           this.stkIoBillEntryList = response.data.stkIoBillEntryList;
           this.form.billStatus = '1';
           this.form.billType = '201';
@@ -736,26 +807,27 @@ export default {
         this.$message.error("加载科室申请单明细失败");
       });
     },
-    selectRkApplyData(val) {
-      // 假设 val 是科室申请单对象或数组，取 id
+    async selectRkApplyData(val) {
       const rkApplyId = Array.isArray(val) ? val[0].id : val.id;
       if (!rkApplyId) return;
+      this.DialogRkApplyComponentShow = false;
 
-      const rkApplyIdStr = String(rkApplyId);
-      var param = {
-        rkApplyId: rkApplyIdStr
-      };
-      createCkEntriesByRkApply(param).then(response => {
-        if (response && response.data) {
-          this.form = response.data;
-          this.stkIoBillEntryList = response.data.stkIoBillEntryList;
-          this.form.billStatus = '1';
-          this.form.billType = '201';
-          this.DialogRkApplyComponentShow = false;
+      try {
+        const headRes = await getInWarehouse(rkApplyId);
+        const rkBill = headRes && headRes.data;
+        const deptId = rkBill ? rkBill.departmentId : null;
+        if (this.isOutboundDeptEmpty(deptId)) {
+          this.pendingRkApplyIdForCk = rkApplyId;
+          this.rkOutDeptTempId = null;
+          this.rkOutDeptMissingHint = true;
+          this.rkOutDeptDialogVisible = true;
+          return;
         }
-      }).catch(() => {
-        this.$message.error("加载科室申请单明细失败");
-      });
+        await this.loadCkEntriesByRkApply(rkApplyId, null);
+      } catch (e) {
+        const m = (e && e.response && e.response.data && e.response.data.msg) || (e && e.msg) || '获取入库单信息失败';
+        this.$message.error(m);
+      }
     },
     //当天日期
     getBillDate(){
@@ -796,6 +868,10 @@ export default {
         auditDate:null
       };
       this.stkIoBillEntryList = [];
+      this.rkOutDeptDialogVisible = false;
+      this.rkOutDeptTempId = null;
+      this.rkOutDeptMissingHint = false;
+      this.pendingRkApplyIdForCk = null;
       this.resetForm("form");
     },
     //数量改变事件
