@@ -992,14 +992,18 @@ export default {
           this.form.totalAmount = totalAmt.toFixed(2);
           if (this.form.id != null) {
             updateOutWarehouse(this.form).then(response => {
-              this.$modal.msgSuccess("修改成功");
+              this.$modal.msgSuccess((response && response.msg) || "修改成功");
+              const filteredCount = Number(response && response.data && response.data.dedupFilteredCount) || 0;
+              if (filteredCount > 0) this.$message.warning(`后台已自动过滤 ${filteredCount} 条重复明细`);
               this.getList();
               // 保存成功后不关闭弹窗，允许继续修改
               // this.open = false;
             }).catch(err => { tryShowDocRefQtyError(this, err) });
           } else {
             addOutWarehouse(this.form).then(response => {
-              this.$modal.msgSuccess("新增成功");
+              this.$modal.msgSuccess((response && response.msg) || "新增成功");
+              const filteredCount = Number(response && response.data && response.data.dedupFilteredCount) || 0;
+              if (filteredCount > 0) this.$message.warning(`后台已自动过滤 ${filteredCount} 条重复明细`);
               this.getList();
               // 保存成功后不关闭弹窗，允许继续修改
               // this.open = false;
