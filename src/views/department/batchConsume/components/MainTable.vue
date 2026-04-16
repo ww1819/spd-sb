@@ -12,7 +12,7 @@
     <el-table-column label="单号" align="center" prop="consumeBillNo" width="180" show-overflow-tooltip resizable>
       <template slot-scope="scope">
         <el-button type="text" @click="handleView(scope.row)">
-          <span>{{ scope.row.consumeBillNo }}</span>
+          <span>{{ (scope.row.reverseFlag == 1 || scope.row.reverseFlag === '1') ? ('【退】' + scope.row.consumeBillNo) : scope.row.consumeBillNo }}</span>
         </el-button>
       </template>
     </el-table-column>
@@ -23,9 +23,15 @@
     </el-table-column>
     <el-table-column label="仓库" align="center" prop="warehouse.name" width="120" show-overflow-tooltip resizable />
     <el-table-column label="科室" align="center" prop="department.name" width="120" show-overflow-tooltip resizable />
+    <el-table-column label="单据类型" align="center" width="100" show-overflow-tooltip resizable>
+      <template slot-scope="scope">
+        <el-tag v-if="scope.row.reverseFlag == 1 || scope.row.reverseFlag === '1'" type="warning" size="mini">退消耗</el-tag>
+        <el-tag v-else type="success" size="mini">正向消耗</el-tag>
+      </template>
+    </el-table-column>
     <el-table-column label="金额" align="center" prop="totalAmount" width="120" show-overflow-tooltip resizable>
       <template slot-scope="scope">
-        <span v-if="scope.row.totalAmount && parseFloat(scope.row.totalAmount) > 0">¥{{ parseFloat(scope.row.totalAmount).toFixed(2) }}</span>
+        <span v-if="scope.row.totalAmount !== null && scope.row.totalAmount !== undefined && scope.row.totalAmount !== ''">¥{{ parseFloat(scope.row.totalAmount).toFixed(2) }}</span>
         <span v-else>--</span>
       </template>
     </el-table-column>
@@ -44,6 +50,11 @@
     <el-table-column label="驳回原因" align="center" prop="rejectReason" width="150" show-overflow-tooltip resizable>
       <template slot-scope="scope">
         <span>{{ scope.row.rejectReason || '--' }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="来源单号" align="center" prop="reverseOfBillNo" width="180" show-overflow-tooltip resizable>
+      <template slot-scope="scope">
+        <span>{{ scope.row.reverseOfBillNo || '--' }}</span>
       </template>
     </el-table-column>
     <el-table-column label="备注" align="center" prop="remark" width="150" show-overflow-tooltip resizable />
