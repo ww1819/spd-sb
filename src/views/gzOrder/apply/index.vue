@@ -232,6 +232,11 @@
                     </el-form-item>
                   </el-col>
                   <el-col :span="4">
+                    <el-form-item label="申请科室" prop="applyDepartmentId">
+                      <SelectDepartment v-model="form.applyDepartmentId" style="width: 140px"/>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="4">
                     <el-form-item label="制单人" prop="createBy">
                       <el-input v-model="form.creatorName" :disabled="true" style="width: 140px" />
                     </el-form-item>
@@ -536,7 +541,9 @@ import { listFixedNumber } from "@/api/monitoring/fixedNumber";
 import { listWarehouse } from "@/api/foundation/warehouse";
 import SelectMaterial from '@/components/SelectModel/SelectMaterial';
 import SelectWarehouse from '@/components/SelectModel/SelectWarehouse';
+import SelectDepartment from '@/components/SelectModel/SelectDepartment';
 import SelectSupplier from "@/components/SelectModel/SelectSupplier";
+import { tryShowGzInventoryError } from '@/utils/gzInventoryValidate';
 import SelectGZMaterialFilter from '@/components/SelectModel/SelectGZMaterialFilter';
 import gzOrderPrint from "@/views/gzOrder/audit/gzOrderPrint";
 import barcodePrint from "@/views/gzOrder/apply/barcodePrint";
@@ -547,7 +554,7 @@ import item from "@/layout/components/Sidebar/Item.vue";
 export default {
   name: "Order",
   dicts: ['biz_status','bill_type'],
-  components: {SelectSupplier,SelectMaterial,SelectWarehouse,SelectGZMaterialFilter,gzOrderPrint,barcodePrint},
+  components: {SelectSupplier,SelectMaterial,SelectWarehouse,SelectDepartment,SelectGZMaterialFilter,gzOrderPrint,barcodePrint},
   data() {
     return {
       // 遮罩层
@@ -1321,6 +1328,7 @@ export default {
         supplerId: null,
         orderDate: null,
         warehouseId: null,
+        applyDepartmentId: null,
         orderStatus: null,
         orderType: null,
         delFlag: null,
@@ -2040,7 +2048,7 @@ export default {
               this.$modal.msgSuccess("保存成功");
               // 保存后不关闭页面，继续操作
               this.getList();
-            });
+            }).catch(err => { tryShowGzInventoryError(this, err); });
           } else {
             addOrder(this.form).then(response => {
               this.$modal.msgSuccess("保存成功");
@@ -2048,7 +2056,7 @@ export default {
               // 更新表单ID，以便后续修改
               this.form.id = response.data;
               this.getList();
-            });
+            }).catch(err => { tryShowGzInventoryError(this, err); });
           }
         }
       });

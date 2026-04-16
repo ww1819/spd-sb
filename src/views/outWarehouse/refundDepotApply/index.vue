@@ -438,6 +438,7 @@ import SelectUser from '@/components/SelectModel/SelectUser';
 
 import SelectDepInventory from '@/components/SelectModel/SelectDepInventory';
 import SelectCkApply from "@/components/SelectModel/SelectCkApply";
+import { tryShowDocRefQtyError } from '@/utils/hcDocRefQtyValidate'
 
 export default {
   name: "OutWarehouseRefund",
@@ -836,13 +837,13 @@ export default {
               this.$modal.msgSuccess("修改成功");
               this.open = false;
               this.getList();
-            });
+            }).catch(err => { tryShowDocRefQtyError(this, err) });
           } else {
             addTkInventory(this.form).then(response => {
               this.$modal.msgSuccess("新增成功");
               this.open = false;
               this.getList();
-            });
+            }).catch(err => { tryShowDocRefQtyError(this, err) });
           }
         }
       });

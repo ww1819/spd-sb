@@ -418,6 +418,7 @@ import SelectUser from '@/components/SelectModel/SelectUser';
 import SelectDepInventory from '@/components/SelectModel/SelectDepInventory';
 import refundDepotOrderPrint from "@/views/outWarehouse/refundDepotAudit/refundDepotOrderPrint.vue";
 import RMBConverter from "@/utils/tools";
+import { tryShowDocRefQtyError } from '@/utils/hcDocRefQtyValidate'
 import {STOCK_IN_TEMPLATE} from '@/utils/printData';
 import refundGoodsOrderPrint from "@/views/inWarehouse/refundGoodsAudit/refundGoodsOrderPrint.vue";
 
@@ -734,7 +735,7 @@ export default {
         }).then(() => {
           this.getList()
           this.$modal.msgSuccess('审核退库成功！')
-        }).catch(() => {})
+        }).catch(err => { if (!tryShowDocRefQtyError(this, err)) {} })
       }).catch(() => {})
     },
     /** 批量审核按钮操作 */
@@ -752,7 +753,7 @@ export default {
       }).then(() => {
         this.getList();
         this.$modal.msgSuccess("批量审核成功！");
-      }).catch(() => {});
+      }).catch(err => { tryShowDocRefQtyError(this, err) });
     },
     /** 修改按钮操作 */
     handleUpdate(row) {
@@ -791,7 +792,7 @@ export default {
             this.$modal.msgSuccess('修改成功')
             this.open = false
             this.getList()
-          })
+          }).catch(err => { tryShowDocRefQtyError(this, err) })
         }
       })
     },

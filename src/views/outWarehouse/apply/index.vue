@@ -512,6 +512,7 @@ import SelectRkApply from "@/components/SelectModel/SelectRkApply";
 import outOrderPrint from "@/views/outWarehouse/audit/outOrderPrint";
 import RMBConverter from "@/utils/tools";
 import {STOCK_OUT_TEMPLATE} from '@/utils/printData'
+import { tryShowDocRefQtyError } from '@/utils/hcDocRefQtyValidate'
 
 export default {
   name: "OutWarehouseApply",
@@ -995,14 +996,14 @@ export default {
               this.getList();
               // 保存成功后不关闭弹窗，允许继续修改
               // this.open = false;
-            });
+            }).catch(err => { tryShowDocRefQtyError(this, err) });
           } else {
             addOutWarehouse(this.form).then(response => {
               this.$modal.msgSuccess("新增成功");
               this.getList();
               // 保存成功后不关闭弹窗，允许继续修改
               // this.open = false;
-            });
+            }).catch(err => { tryShowDocRefQtyError(this, err) });
           }
         }
       });

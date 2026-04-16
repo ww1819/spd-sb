@@ -482,6 +482,7 @@ import SelectTkApply from "@/components/SelectModel/SelectTkApply";
 import {createEntriesByDApply} from "@/api/warehouse/outWarehouse";
 import refundGoodsOrderPrint from "@/views/inWarehouse/refundGoodsAudit/refundGoodsOrderPrint.vue";
 import RMBConverter from "@/utils/tools";
+import { tryShowDocRefQtyError } from '@/utils/hcDocRefQtyValidate'
 import {STOCK_IN_TEMPLATE} from '@/utils/printData';
 
 export default {
@@ -856,14 +857,14 @@ export default {
               this.getList();
               // 保存成功后不关闭弹窗，允许继续办理业务
               // this.open = false;
-            });
+            }).catch(err => { tryShowDocRefQtyError(this, err) });
           } else {
             addThInventory(this.form).then(response => {
               this.$modal.msgSuccess("新增成功");
               this.getList();
               // 保存成功后不关闭弹窗，允许继续办理业务
               // this.open = false;
-            });
+            }).catch(err => { tryShowDocRefQtyError(this, err) });
           }
         }
       });

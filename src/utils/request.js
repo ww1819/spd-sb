@@ -102,6 +102,12 @@ service.interceptors.response.use(res => {
     } else if (code === 601) {
       Message({ message: msg, type: 'warning' })
       return Promise.reject('error')
+    } else if (code === 602) {
+      // 高值库存明细校验：交由业务页弹窗展示行级原因，不打全局 Notification
+      return Promise.reject(res.data)
+    } else if (code === 603) {
+      // 低值耗材引用数量明细校验：同上
+      return Promise.reject(res.data)
     } else if (code !== 200) {
       Notification.error({ title: msg })
       return Promise.reject('error')

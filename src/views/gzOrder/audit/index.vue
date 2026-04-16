@@ -266,6 +266,11 @@
           </el-col>
 
           <div v-show="action">
+            <el-col :span="1.5" v-if="$route.meta && $route.meta.title && $route.meta.title.includes('出库')">
+              <el-button type="primary" plain icon="el-icon-link" size="small"
+                         v-hasPermi="['gz:refDoc:query']"
+                         @click="openRefAcceptance">引用验收单</el-button>
+            </el-col>
             <el-col :span="1.5">
               <el-button type="primary" icon="el-icon-plus" size="small" @click="checkMaterialBtn">添加</el-button>
             </el-col>
@@ -425,12 +430,34 @@
       @selectData="selectData"
     ></SelectMaterialFilter>
 
+    <el-dialog title="引用备货验收单（仅带当前仓库有库存的明细）" :visible.sync="refAcceptOpen" width="800px" append-to-body>
+      <p style="margin:0 0 10px;color:#909399;font-size:13px">请选择已审核的验收单，系统将按当前出库仓库过滤仍有备货库存的条码行并带入明细。</p>
+      <el-table :data="refAcceptList" v-loading="refLoading" highlight-current-row
+                @row-click="row => { refPickOrderId = row.id; refPickOrderNo = row.orderNo }"
+                max-height="360" border size="small">
+        <el-table-column type="index" width="50" label="#" align="center"/>
+        <el-table-column prop="orderNo" label="验收单号" min-width="140" show-overflow-tooltip/>
+        <el-table-column label="仓库" min-width="100" show-overflow-tooltip>
+          <template slot-scope="scope">{{ (scope.row.warehouse && scope.row.warehouse.name) || '--' }}</template>
+        </el-table-column>
+        <el-table-column label="制单日期" width="110" align="center">
+          <template slot-scope="scope">{{ parseTime(scope.row.orderDate, '{y}-{m}-{d}') }}</template>
+        </el-table-column>
+      </el-table>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="refAcceptOpen = false">取 消</el-button>
+        <el-button type="primary" @click="confirmRefAcceptance">确 定</el-button>
+      </span>
+    </el-dialog>
+
   </div>
 </template>
 
 <script>
 import { listOrder, getOrder, delOrder, addOrder, updateOrder,auditOrder, checkInHospitalCode } from "@/api/gz/order";
 import { listDepotInventory } from "@/api/gz/depotInventory";
+import { listAuditedAcceptance, listAcceptanceDepotLines } from "@/api/gz/refDoc";
+import { tryShowGzInventoryError } from '@/utils/gzInventoryValidate';
 import SelectMaterial from '@/components/SelectModel/SelectMaterial';
 import SelectWarehouse from '@/components/SelectModel/SelectWarehouse';
 import SelectDepartment from '@/components/SelectModel/SelectDepartment';
@@ -502,6 +529,11 @@ export default {
       action: true,
       // 是否为出库
       isOutbound: false,
+      refAcceptOpen: false,
+      refAcceptList: [],
+      refLoading: false,
+      refPickOrderId: null,
+      refPickOrderNo: null,
       // 查询参数
       queryParams: {
         pageNum: 1,
@@ -927,6 +959,74 @@ export default {
       this.form.orderDate = this.getOrderDate();
       this.action = true;
     },
+    openRefAcceptance() {
+      if (!this.form.warehouseId) {
+        this.$message.warning('请先选择出库仓库');
+        return;
+      }
+      if (this.gzOrderEntryList && this.gzOrderEntryList.length > 0) {
+        this.$message.warning('已有出库明细时请先清空或保存后再引用');
+        return;
+      }
+      this.refPickOrderId = null;
+      this.refPickOrderNo = null;
+      this.refAcceptOpen = true;
+      this.refLoading = true;
+      listAuditedAcceptance({ pageNum: 1, pageSize: 100 }).then(res => {
+        this.refAcceptList = res.data || res.rows || [];
+        this.refLoading = false;
+      }).catch(() => { this.refLoading = false; });
+    },
+    confirmRefAcceptance() {
+      if (!this.refPickOrderId) {
+        this.$message.warning('请单击表格选择一条验收单');
+        return;
+      }
+      listAcceptanceDepotLines(this.refPickOrderId, this.form.warehouseId).then(res => {
+        const rows = res.data || [];
+        if (!rows.length) {
+          this.$message.warning('该验收单在当前仓库无可用备货库存');
+          return;
+        }
+        rows.forEach(r => this.gzOrderEntryList.push(this.mapDepotToOutboundEntry(r)));
+        this.refAcceptOpen = false;
+        this.$message.success('已带入 ' + rows.length + ' 条明细');
+      });
+    },
+    mapDepotToOutboundEntry(r) {
+      const m = r.material || {};
+      const qty = r.qty != null ? r.qty : 1;
+      const price = r.unitPrice != null ? r.unitPrice : 0;
+      let amt = r.amt;
+      if (amt == null && price != null) {
+        amt = (parseFloat(price) * parseFloat(qty)).toFixed(2);
+      }
+      return {
+        materialId: r.materialId,
+        materialName: m.name || '',
+        speci: m.speci || '',
+        model: m.model || '',
+        qty,
+        price,
+        amt,
+        batchNo: r.batchNo,
+        batchNumber: r.materialNo,
+        beginTime: r.materialDate,
+        endTime: r.endTime,
+        inHospitalCode: r.inHospitalCode,
+        masterBarcode: r.masterBarcode,
+        secondaryBarcode: r.secondaryBarcode,
+        supplierId: r.supplierId,
+        stockQty: qty,
+        factoryName: m.fdFactory && m.fdFactory.factoryName,
+        supplierName: r.supplier && r.supplier.name,
+        material: r.material,
+        refSrcAcceptanceId: String(r.orderId != null ? r.orderId : (this.refPickOrderId || '')),
+        refSrcAcceptanceNo: r.orderNo || this.refPickOrderNo || '',
+        refSrcOrderEntryId: r.orderEntryId != null ? String(r.orderEntryId) : '',
+        refSrcBarcodeLineId: r.inhospitalcodeListId != null ? String(r.inhospitalcodeListId) : ''
+      };
+    },
     /** 审核按钮操作 */
     handleAudit(row) {
       this.reset();
@@ -945,7 +1045,7 @@ export default {
         } else {
           this.$modal.msgSuccess("审核入库成功！");
         }
-      }).catch(() => {});
+      }).catch(err => { tryShowGzInventoryError(this, err); });
     },
     /** 批量审核按钮操作 */
     handleBatchAudit() {
@@ -968,7 +1068,7 @@ export default {
         } else {
           this.$modal.msgSuccess("批量审核入库成功！");
         }
-      }).catch(() => {});
+      }).catch(err => { tryShowGzInventoryError(this, err); });
     },
     /** 修改按钮操作 */
     handleUpdate(row) {
@@ -1232,7 +1332,7 @@ export default {
               // 确保查询时使用正确的 orderType
               this.setOrderTypeByRoute();
               this.getList();
-            });
+            }).catch(err => { tryShowGzInventoryError(this, err); });
           } else {
             addOrder(this.form).then(response => {
               this.$modal.msgSuccess("新增成功");
@@ -1240,7 +1340,7 @@ export default {
               // 确保查询时使用正确的 orderType
               this.setOrderTypeByRoute();
               this.getList();
-            });
+            }).catch(err => { tryShowGzInventoryError(this, err); });
           }
         }
       });

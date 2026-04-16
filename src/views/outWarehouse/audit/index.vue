@@ -429,6 +429,7 @@ import SelectDepartment from '@/components/SelectModel/SelectDepartment';
 import SelectUser from '@/components/SelectModel/SelectUser';
 import outOrderPrint from "@/views/outWarehouse/audit/outOrderPrint";
 import RMBConverter from "@/utils/tools";
+import { tryShowDocRefQtyError } from '@/utils/hcDocRefQtyValidate'
 import {STOCK_OUT_TEMPLATE} from '@/utils/printData'
 
 export default {
@@ -743,7 +744,7 @@ export default {
         }).then(() => {
           this.getList()
           this.$modal.msgSuccess('审核出库成功！')
-        }).catch(() => {})
+        }).catch(err => { if (!tryShowDocRefQtyError(this, err)) {} })
       }).catch(() => {})
     },
     /** 批量审核按钮操作 */
@@ -761,7 +762,7 @@ export default {
       }).then(() => {
         this.getList();
         this.$modal.msgSuccess("批量审核成功！");
-      }).catch(() => {});
+      }).catch(err => { tryShowDocRefQtyError(this, err) });
     },
     /** 修改按钮操作 */
     handleUpdate(row) {
@@ -799,7 +800,7 @@ export default {
             this.$modal.msgSuccess('修改成功')
             this.open = false
             this.getList()
-          })
+          }).catch(err => { tryShowDocRefQtyError(this, err) })
         }
       })
     },
