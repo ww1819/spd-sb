@@ -172,7 +172,9 @@ export default {
         warehouseId: null,
         departmentId: null,
         supplierId: null,
-        materialId: null
+        materialId: null,
+        /** 与后端 StkIoBill.params 一致：仅列出明细供应商唯一的退库单 */
+        params: { uniformTkEntrySupplierOnly: '1' }
       },
       // 表单参数
       form: {},
@@ -221,7 +223,7 @@ export default {
       this.show = false
       this.$emit('closeDialog')
     },
-    async checkBtn() {
+    checkBtn() {
       if (!this.selectRow || !this.selectRow.length) {
         this.$message({ message: '请先选择数据', type: 'warning' });
         return;
@@ -229,26 +231,6 @@ export default {
       const row = this.selectRow[0];
       if (!row || !row.id) {
         this.$message({ message: '请先选择数据', type: 'warning' });
-        return;
-      }
-      try {
-        const res = await getTkInventory(row.id);
-        const entries = (res.data && res.data.stkIoBillEntryList) || [];
-        const sidSet = new Set();
-        for (const e of entries) {
-          if (!e) continue;
-          const sid = e.supplerId != null ? e.supplerId : e.supplierId;
-          if (sid != null && String(sid).trim() !== '') {
-            sidSet.add(String(sid).trim());
-          }
-        }
-        if (sidSet.size > 1) {
-          this.$message.error('该退库单明细存在多个不同供应商，不能引用生成退货单');
-          return;
-        }
-      } catch (err) {
-        const msg = (err && err.response && err.response.data && err.response.data.msg) || (err && err.message) || '';
-        this.$message.error(msg ? `校验退库单失败：${msg}` : '校验退库单失败');
         return;
       }
       this.$emit('selectData', this.selectRow);

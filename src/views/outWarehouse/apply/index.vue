@@ -393,6 +393,18 @@
               <span>{{ (scope.row.material && scope.row.material.supplier && scope.row.material.supplier.name) || '--' }}</span>
             </template>
           </el-table-column>
+          <el-table-column label="出库已审占用" align="center" width="110" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.srcOutboundAuditedRefQty) }}</template>
+          </el-table-column>
+          <el-table-column label="出库待审占用" align="center" width="110" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.srcOutboundPendingRefQty) }}</template>
+          </el-table-column>
+          <el-table-column label="出库可引用" align="center" width="100" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.srcOutboundRefableQty) }}</template>
+          </el-table-column>
+          <el-table-column label="库存数" align="center" width="90" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.linkedStkQty) }}</template>
+          </el-table-column>
           <el-table-column label="备注" prop="remark" width="200" show-overflow-tooltip resizable>
             <template slot-scope="scope">
               <el-input v-model="scope.row.remark" placeholder="请输入备注" />
@@ -610,8 +622,7 @@ export default {
           sums[index] = '合计';
           return;
         }
-        // 只处理金额列（索引5对应金额列）
-        if (index === 5) {
+        if (column.property === 'amt') {
           const values = data.map(item => {
             const num = Number(item.amt || 0);
             return isNaN(num) ? 0 : num;
@@ -624,7 +635,7 @@ export default {
 
           // 更新总金额（确保类型为number）
           this.form.totalAmount = parseFloat(sums[index]);
-        } else if ([3,4].includes(index)) { // 处理单价和数量列
+        } else if (column.property === 'unitPrice' || column.property === 'qty') {
           sums[index] = '-';
         } else {
           sums[index] = '';
@@ -656,6 +667,12 @@ export default {
         }
       });
       return sums;
+    },
+    formatRefQty(v) {
+      if (v === null || v === undefined || v === '') {
+        return '--';
+      }
+      return v;
     },
     /** 查询出库列表 */
     getList() {

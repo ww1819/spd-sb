@@ -399,6 +399,18 @@
               </el-date-picker>
             </template>
           </el-table-column>
+          <el-table-column label="退货已审占用" align="center" width="110" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.srcReturnAuditedRefQty) }}</template>
+          </el-table-column>
+          <el-table-column label="退货待审占用" align="center" width="110" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.srcReturnPendingRefQty) }}</template>
+          </el-table-column>
+          <el-table-column label="退货可引用" align="center" width="100" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.srcReturnRefableQty) }}</template>
+          </el-table-column>
+          <el-table-column label="库存数" align="center" width="90" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.linkedStkQty) }}</template>
+          </el-table-column>
           <el-table-column label="备注" prop="remark" width="200" show-overflow-tooltip resizable>
             <template slot-scope="scope">
               <el-input v-model="scope.row.remark" placeholder="请输入备注" />
@@ -569,7 +581,7 @@ export default {
           return;
         }
         const values = data.map(item => Number(item[column.property]));
-        if(index === 3 || index === 4 || index === 5){
+        if (column.property === 'unitPrice' || column.property === 'qty' || column.property === 'amt') {
           if (!values.every(value => isNaN(value))) {
             sums[index] = values.reduce((prev, curr) => {
               const value = Number(curr);
@@ -582,7 +594,7 @@ export default {
             sums[index] = sums[index].toFixed(2);
           }
 
-          if(index === 5){
+          if (column.property === 'amt') {
             let res = parseFloat(sums[index]);
             if(!isNaN(res)){
               let parRes = res.toFixed(2);
@@ -592,6 +604,12 @@ export default {
         }
       });
       return sums;
+    },
+    formatRefQty(v) {
+      if (v === null || v === undefined || v === '') {
+        return '--';
+      }
+      return v;
     },
     getTotalSummaries(param) {
       const { columns, data } = param;
