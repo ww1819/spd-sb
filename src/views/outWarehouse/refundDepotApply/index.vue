@@ -439,6 +439,7 @@ import SelectUser from '@/components/SelectModel/SelectUser';
 import SelectDepInventory from '@/components/SelectModel/SelectDepInventory';
 import SelectCkApply from "@/components/SelectModel/SelectCkApply";
 import { tryShowDocRefQtyError } from '@/utils/hcDocRefQtyValidate'
+import { ioEntryDepInvId } from '@/utils/ioBillEntryIds'
 
 export default {
   name: "OutWarehouseRefund",
@@ -608,13 +609,13 @@ export default {
       const rows = Array.isArray(val) ? val : (val ? [val] : []);
       const existedKc = new Set(
         this.stkIoBillEntryList
-          .map(e => e && e.kcNo)
+          .map(e => e && ioEntryDepInvId(e))
           .filter(id => id != null && id !== '')
           .map(id => String(id))
       );
       const existedBatchNos = new Set(
         this.stkIoBillEntryList
-          .filter(e => e && (e.kcNo == null || e.kcNo === ''))
+          .filter(e => e && !ioEntryDepInvId(e))
           .map(e => e.batchNo)
           .filter(b => b != null && String(b).trim() !== '')
       );
@@ -638,7 +639,9 @@ export default {
         obj.endTime = item.endTime || item.endDate || null;
         obj.remark = item.remark;
         obj.material = item.material;
-        obj.kcNo = item.id != null ? item.id : null;
+        obj.depInventoryId = item.id != null ? item.id : null;
+        obj.stkInventoryId = null;
+        obj.kcNo = null;
         this.stkIoBillEntryList.push(obj);
       });
     },
@@ -787,8 +790,9 @@ export default {
           const batchMap = new Map();
           for (const [index, entry] of this.stkIoBillEntryList.entries()) {
             if (!entry) continue;
-            if (entry.kcNo != null && entry.kcNo !== '') {
-              const kid = String(entry.kcNo);
+            const depId = ioEntryDepInvId(entry)
+            if (depId != null && depId !== '') {
+              const kid = String(depId);
               if (kcMap.has(kid)) {
                 this.$modal.msgError(`明细第${kcMap.get(kid)}行与第${index + 1}行指向同一科室库存，请检查后再保存`);
                 return;
@@ -883,6 +887,8 @@ export default {
       obj.endTime = "";
       obj.remark = "";
       obj.kcNo = null;
+      obj.depInventoryId = null;
+      obj.stkInventoryId = null;
 
       this.stkIoBillEntryList.push(obj);
     },

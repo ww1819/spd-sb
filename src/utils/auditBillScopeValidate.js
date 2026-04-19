@@ -1,5 +1,6 @@
 import { getInventory as getWhInv } from '@/api/warehouse/inventory'
 import { getInventory as getDepInv } from '@/api/department/depInventory'
+import { ioEntryWhInvId, ioEntryDepInvId } from '@/utils/ioBillEntryIds'
 
 function sameId(a, b) {
   if (a == null && b == null) return true
@@ -8,7 +9,7 @@ function sameId(a, b) {
 }
 
 /**
- * 出库(201)/退货(301)：按明细 kc_no 查仓库库存，校验归属仓库、退货时校验供应商
+ * 出库(201)/退货(301)：按明细 stk_inventory_id（兼容旧 kc_no）查仓库库存，校验归属仓库、退货时校验供应商
  */
 export async function collectCkThScopeErrors(form, entryList, billType) {
   const wh = form.warehouseId
@@ -23,10 +24,11 @@ export async function collectCkThScopeErrors(form, entryList, billType) {
   const tasks = []
   for (let i = 0; i < list.length; i++) {
     const e = list[i]
-    if (!e || !e.kcNo) continue
+    const wid = ioEntryWhInvId(e)
+    if (!e || !wid) continue
     const row = i + 1
     tasks.push(
-      getWhInv(e.kcNo).then(res => ({ row, inv: res.data })).catch(() => ({ row, inv: null }))
+      getWhInv(wid).then(res => ({ row, inv: res.data })).catch(() => ({ row, inv: null }))
     )
   }
   const results = await Promise.all(tasks)
@@ -46,7 +48,7 @@ export async function collectCkThScopeErrors(form, entryList, billType) {
 }
 
 /**
- * 退库(401)：按明细 kc_no 查科室库存，校验归属仓库、科室
+ * 退库(401)：按明细 dep_inventory_id（兼容旧 kc_no）查科室库存，校验归属仓库、科室
  */
 export async function collectTkScopeErrors(form, entryList) {
   const wh = form.warehouseId
@@ -64,10 +66,11 @@ export async function collectTkScopeErrors(form, entryList) {
   const tasks = []
   for (let i = 0; i < list.length; i++) {
     const e = list[i]
-    if (!e || !e.kcNo) continue
+    const did = ioEntryDepInvId(e)
+    if (!e || !did) continue
     const row = i + 1
     tasks.push(
-      getDepInv(e.kcNo).then(res => ({ row, inv: res.data })).catch(() => ({ row, inv: null }))
+      getDepInv(did).then(res => ({ row, inv: res.data })).catch(() => ({ row, inv: null }))
     )
   }
   const results = await Promise.all(tasks)

@@ -112,6 +112,7 @@
 import { listInventory } from "@/api/department/depInventory";
 import SelectMaterial from "@/components/SelectModel/SelectMaterial";
 import SelectDepartment from "@/components/SelectModel/SelectDepartment";
+import { ioEntryDepInvId } from '@/utils/ioBillEntryIds'
 
 export default {
   name: "SelectInventory",
@@ -176,13 +177,13 @@ export default {
         if (this.selectedDetails && this.selectedDetails.length) {
           const existedDepInvIds = new Set(
             this.selectedDetails
-              .map(d => d && d.kcNo)
+              .map(d => d && ioEntryDepInvId(d))
               .filter(id => id != null && id !== '')
               .map(id => String(id))
           );
           const existedBatchKeys = new Set(
             this.selectedDetails
-              .filter(d => d && d.materialId != null && d.batchNo && (d.kcNo == null || d.kcNo === ''))
+              .filter(d => d && d.materialId != null && d.batchNo && !ioEntryDepInvId(d))
               .map(d => `${d.materialId}__${d.batchNo}`)
           );
           this.inventoryList = rows.filter(it => {
