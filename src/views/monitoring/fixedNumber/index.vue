@@ -388,6 +388,14 @@
                       />
                     </el-form-item>
                   </el-col>
+                  <el-col :span="6">
+                    <el-form-item label="是否集采" prop="isProcure">
+                      <el-select v-model="addQueryParams.isProcure" clearable placeholder="全部" style="width: 100%">
+                        <el-option label="是" value="1" />
+                        <el-option label="否" value="2" />
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
                   <el-col :span="12">
                     <el-form-item>
                       <el-button type="primary" icon="el-icon-search" size="small" @click="handleAddQuery">搜索</el-button>
@@ -534,7 +542,8 @@ export default {
         pageSize: 10,
         supplierId: null,
         materialName: null,
-        speci: null
+        speci: null,
+        isProcure: null
       },
       // 查询参数
       queryParams: {
@@ -1133,7 +1142,8 @@ export default {
         pageSize: 10,
         supplierId: null,
         materialName: null,
-        speci: null
+        speci: null,
+        isProcure: null
       };
       this.addMaterialList = [];
       this.addSelectedMaterials = [];
