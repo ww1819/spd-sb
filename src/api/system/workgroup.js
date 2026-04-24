@@ -143,6 +143,14 @@ export function syncWorkGroupToUsers(groupId) {
   })
 }
 
+/** 查询工作组同步状态 */
+export function getWorkGroupSyncStatus(groupId) {
+  return request({
+    url: BASE + '/sync/status/' + groupId,
+    method: 'get'
+  })
+}
+
 // ---------- 兼容旧路径（岗位页/用户页可统一用上面接口） ----------
 /** 查询工作组下拉（设备系统下用 listWorkGroup(customerId) 映射） */
 export function workgroupTreeSelect() {
