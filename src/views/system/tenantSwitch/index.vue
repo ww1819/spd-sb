@@ -101,6 +101,7 @@ export default {
             return
           }
           this.$store.commit('SET_TENANT', null)
+          this.$store.commit('SET_TENANT_SYNCED_AT', 0)
           this.$message.success('已切换为平台管理员模式')
           this.$router.push({ path: this.redirect || '/index' }).catch(() => {})
         }
