@@ -9,6 +9,15 @@ export function listInventory(query) {
   })
 }
 
+/** 选库存明细弹窗等：仅需登录；支持 params.id 精确查一条（替代 GET /department/inventory/:id 的 query 权限）。 */
+export function listInventoryPick(query) {
+  return request({
+    url: '/department/inventory/pick/list',
+    method: 'get',
+    params: query
+  })
+}
+
 // 查询科室库存详细
 export function getInventory(id) {
   return request({
