@@ -26,7 +26,7 @@
       </el-row>
 
       <el-row :gutter="16" class="query-row-second">
-        <el-col :span="12">
+        <el-col :span="14" class="query-date-range-col">
           <el-form-item label="日期条件" style="display: flex; align-items: center; flex-wrap: wrap;">
             <el-radio-group v-model="queryParams.dateQueryType" size="small" style="margin-right: 10px; margin-bottom: 4px;">
               <el-radio-button label="bill">制单日期</el-radio-button>
@@ -51,7 +51,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="12" class="query-status-col">
+        <el-col :span="10" class="query-status-col">
           <el-form-item label="单据状态" prop="billStatus" class="query-item-status-aligned">
             <el-select v-model="queryParams.billStatus" placeholder="全部"
                        clearable style="width: 150px">
@@ -1312,11 +1312,6 @@ export default {
   width: 150px;
 }
 
-/* 第二行单据状态对齐到仓库位置 */
-.app-container > .el-form .query-row-second {
-  position: relative;
-}
-
 /* 确保制单日期的两个日期选择器在同一行 */
 .app-container > .el-form .query-row-second .el-form-item {
   white-space: nowrap;
@@ -1328,12 +1323,11 @@ export default {
   flex-wrap: nowrap;
 }
 
+.app-container > .el-form .query-row-second .query-date-range-col {
+  min-width: 0;
+}
 .app-container > .el-form .query-row-second .query-status-col {
-  position: absolute;
-  left: 552px;
-  width: auto;
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 8px;
 }
 
 /* 弹窗内表单字段容器样式 */

@@ -26,32 +26,32 @@
       </el-row>
 
       <el-row :gutter="16" class="query-row-second">
-        <el-col :span="12">
-          <el-form-item label="日期条件" style="display: flex; align-items: center; flex-wrap: wrap;">
+        <el-col :span="14" class="query-date-range-col">
+          <el-form-item label="日期条件" class="query-date-range-form-item">
             <el-radio-group v-model="queryParams.dateQueryType" size="small" style="margin-right: 10px; margin-bottom: 4px;">
               <el-radio-button label="bill">制单日期</el-radio-button>
               <el-radio-button label="audit">审核日期</el-radio-button>
             </el-radio-group>
             <el-date-picker
-                            v-model="queryParams.beginDate"
-                            type="date"
-                            value-format="yyyy-MM-dd"
+              v-model="queryParams.beginDate"
+              type="date"
+              value-format="yyyy-MM-dd"
               placeholder="起始日期"
               clearable
               style="width: 180px; margin-right: 8px;"
             />
             <span style="margin: 0 4px;">至</span>
             <el-date-picker
-                            v-model="queryParams.endDate"
-                            type="date"
-                            value-format="yyyy-MM-dd"
+              v-model="queryParams.endDate"
+              type="date"
+              value-format="yyyy-MM-dd"
               placeholder="截止日期"
               clearable
               style="width: 180px; margin-left: 8px;"
             />
           </el-form-item>
         </el-col>
-        <el-col :span="12" class="query-status-col">
+        <el-col :span="10" class="query-status-col">
           <el-form-item label="单据状态" prop="billStatus" class="query-item-status-aligned">
             <el-select v-model="queryParams.billStatus" placeholder="全部"
                        clearable style="width: 150px">
@@ -255,6 +255,17 @@
               <SelectUser v-model="form.createrName"/>
             </el-form-item>
           </el-col>
+          <el-col :span="4">
+            <el-form-item label="发票时间" prop="invoiceTime">
+              <el-date-picker clearable
+                              v-model="form.invoiceTime"
+                              type="date"
+                              value-format="yyyy-MM-dd"
+                              style="width: 100%"
+                              placeholder="请输入发票时间">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
         </el-row>
 
         <el-row :gutter="8">
@@ -281,20 +292,6 @@
           <el-col :span="4">
             <el-form-item label="发票金额" prop="invoiceAmount">
               <el-input v-model="form.invoiceAmount" placeholder="请输入发票金额" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="8">
-          <el-col :span="4">
-            <el-form-item label="发票时间" prop="invoiceTime">
-              <el-date-picker clearable
-                              v-model="form.invoiceTime"
-                              type="date"
-                              value-format="yyyy-MM-dd"
-                              style="width: 100%"
-                              placeholder="请输入发票时间">
-              </el-date-picker>
             </el-form-item>
           </el-col>
           <el-col :span="4">
@@ -1535,28 +1532,42 @@ export default {
   flex-wrap: nowrap;
 }
 
-/* 第二行单据状态对齐到仓库位置 */
-.app-container > .el-form .query-row-second {
-  position: relative;
+/* 第二行：inline 表单下列内强制块级，避免日期区溢出盖住「单据状态」 */
+.app-container > .el-form .query-row-second > .el-col > .el-form-item {
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box;
+  vertical-align: top;
 }
 
-/* 确保制单日期的两个日期选择器在同一行 */
-.app-container > .el-form .query-row-second .el-form-item {
+.app-container > .el-form .query-row-second .el-form-item:not(.query-date-range-form-item) {
   white-space: nowrap;
 }
 
-.app-container > .el-form .query-row-second .el-form-item .el-form-item__content {
+.app-container > .el-form .query-row-second .query-date-range-form-item {
+  white-space: normal;
+}
+
+.app-container > .el-form .query-row-second .query-date-range-form-item .el-form-item__content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  max-width: 100%;
+}
+
+.app-container > .el-form .query-row-second .el-form-item:not(.query-date-range-form-item) .el-form-item__content {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
 }
 
+.app-container > .el-form .query-row-second .query-date-range-col {
+  min-width: 0;
+}
+
 .app-container > .el-form .query-row-second .query-status-col {
-  position: absolute;
-  left: 552px;
-  width: auto;
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 8px;
 }
 
 /* 弹窗内表单字段容器样式 */

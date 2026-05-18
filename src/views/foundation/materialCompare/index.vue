@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container material-compare-page">
     <!-- 左右分栏布局：左边供应商列表，右边耗材明细 -->
     <el-row :gutter="10" style="margin-top: -10px;">
       <!-- 左边：供应商列表 -->
@@ -150,13 +150,16 @@
       </el-col>
     </el-row>
 
-    <!-- HIS弹窗 -->
+    <!-- HIS弹窗：不挂到 body，遮罩限制在主内容区内 -->
     <el-dialog
       :visible.sync="hisDialogVisible"
       width="80%"
+      :append-to-body="false"
+      :modal-append-to-body="false"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
       :show-close="false"
+      custom-class="material-compare-dialog"
     >
       <div slot="title" style="display: flex; justify-content: space-between; align-items: center;">
         <span>HIS对照</span>
@@ -233,9 +236,12 @@
     <el-dialog
       :visible.sync="hrpDialogVisible"
       width="80%"
+      :append-to-body="false"
+      :modal-append-to-body="false"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
       :show-close="false"
+      custom-class="material-compare-dialog"
     >
       <div slot="title" style="display: flex; justify-content: space-between; align-items: center;">
         <span>HRP对照</span>
@@ -518,6 +524,40 @@ export default {
 </script>
 
 <style scoped>
+.material-compare-page {
+  position: relative;
+  min-height: calc(100vh - 84px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.material-compare-page ::v-deep .el-dialog__wrapper {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0 !important;
+}
+
+.material-compare-page ::v-deep .v-modal {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.material-compare-page ::v-deep .material-compare-dialog {
+  margin-top: 5vh !important;
+  max-height: 90vh;
+}
+
+.material-compare-page ::v-deep .material-compare-dialog .el-dialog__body {
+  max-height: calc(90vh - 120px);
+  overflow: auto;
+}
+
 /* 供应商容器 */
 .supplier-container {
   background: #fff;

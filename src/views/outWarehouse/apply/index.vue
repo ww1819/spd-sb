@@ -433,6 +433,7 @@
       v-if="DialogComponentShow"
       :DialogComponentShow="DialogComponentShow"
       :warehouseValue="warehouseValue"
+      :exclude-zero-qty="true"
       @closeDialog="closeDialog"
       @selectData="selectData"
     ></SelectInventory>

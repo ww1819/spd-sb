@@ -135,6 +135,11 @@ export default {
     warehouseValue: [String, Number],
     supplierValue: [String, Number],
     selectedDetails: Array,
+    /** 为 true 时请求仅返回库存数量大于 0 的明细（出库申请「添加」弹窗等） */
+    excludeZeroQty: {
+      type: Boolean,
+      default: false
+    },
     /** 为 true 时不展示供应商条件，查询固定使用 supplierValue（如采购退货申请） */
     hideSupplierQuery: {
       type: Boolean,
@@ -243,7 +248,11 @@ export default {
     getList() {
       this.applyHeaderSupplierFilter();
       this.loading = true;
-      listInventory(this.queryParams).then(response => {
+      const query = { ...this.queryParams };
+      if (this.excludeZeroQty) {
+        query.excludeZeroQty = true;
+      }
+      listInventory(query).then(response => {
         this.inventoryList = response.rows;
         this.total = response.total;
         this.loading = false;
