@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <el-row :gutter="20">
       <!-- 左侧68分类树 -->
@@ -2073,7 +2073,7 @@
           </el-form>
         </el-tab-pane>
 
-        <!-- 不良事件 -->
+        <!-- 不良事件（子表 del_flag：0 未删除，1 已删除；由后端维护，前端仅提交业务字段） -->
         <el-tab-pane label="不良事件" name="adverseEvent">
           <el-form ref="form" :model="form" label-width="120px">
             <!-- 明细表格 -->
@@ -3652,7 +3652,7 @@
           </el-form>
         </el-tab-pane>
 
-        <!-- 不良事件 -->
+        <!-- 不良事件（子表 del_flag：0 未删除，1 已删除；由后端维护，前端仅提交业务字段） -->
         <el-tab-pane label="不良事件" name="adverseEvent">
           <el-form ref="viewForm" :model="form" label-width="120px">
             <!-- 明细表格 -->

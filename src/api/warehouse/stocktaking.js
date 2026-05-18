@@ -43,11 +43,12 @@ export function delStocktaking(id) {
   })
 }
 
-// 审核盘点
+// 审核盘点（501 逐条对账库存，明细多时可能超过默认 10s）
 export function auditStocktaking(data) {
   return request({
     url: '/stocktaking/in/auditStocktaking',
     method: 'put',
-    data: data
+    data: data,
+    timeout: 120000
   })
 }
