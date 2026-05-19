@@ -62,6 +62,12 @@ export const constantRoutes = [
     hidden: true
   },
   {
+    path: '/print/gz-acceptance',
+    component: () => import('@/views/gzOrder/audit/GzAcceptancePrintPage'),
+    hidden: true,
+    meta: { title: '高值备货验收打印' }
+  },
+  {
     path: '',
     component: Layout,
     redirect: 'index',

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="80px">
 
@@ -499,9 +499,18 @@ export default {
         this.$modal.msgSuccess("审核成功！");
       }).catch(() => {});
     },
-    handlePrint(row, flag) {
-      // 打印功能待实现
-      this.$message.info('打印功能待实现');
+    handlePrint(row) {
+      if (!row || !row.id) {
+        this.$modal.msgWarning('缺少单据信息，无法打印');
+        return;
+      }
+      this.$router.push({
+        path: '/print/gz-acceptance',
+        query: {
+          id: String(row.id),
+          from: encodeURIComponent(this.$route.fullPath)
+        }
+      });
     },
     checkMaterialBtn() {
       // 检查是否选择了科室
