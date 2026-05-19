@@ -26,8 +26,12 @@
       </el-row>
 
       <el-row :gutter="16" class="query-row-second">
-        <el-col :span="12">
-          <el-form-item label="制单日期" style="display: flex; align-items: center;">
+        <el-col :span="14" class="query-date-range-col">
+          <el-form-item label="日期条件" style="display: flex; align-items: center; flex-wrap: wrap;">
+            <el-radio-group v-model="queryParams.dateQueryType" size="small" style="margin-right: 10px; margin-bottom: 4px;">
+              <el-radio-button label="bill">制单日期</el-radio-button>
+              <el-radio-button label="audit">审核日期</el-radio-button>
+            </el-radio-group>
             <el-date-picker
               v-model="queryParams.beginDate"
               type="date"
@@ -47,7 +51,7 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="12" class="query-status-col">
+        <el-col :span="10" class="query-status-col">
           <el-form-item label="单据状态" prop="billStatus" class="query-item-status-aligned">
             <el-select v-model="queryParams.billStatus" placeholder="全部"
                        clearable style="width: 150px">
@@ -321,9 +325,57 @@
 <!--            </template>-->
 <!--          </el-table-column>-->
 
-          <el-table-column label="名称" align="center" prop="material.name" width="180" show-overflow-tooltip resizable/>
-          <el-table-column label="规格" align="center" prop="material.speci" width="180" show-overflow-tooltip resizable/>
-          <el-table-column label="型号" align="center" prop="material.name" width="180" show-overflow-tooltip resizable/>
+          <el-table-column
+            label="名称"
+            align="left"
+            header-align="center"
+            width="240"
+            min-width="180"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-text-wrap"
+            resizable
+          >
+            <template slot-scope="scope">
+              <span
+                class="detail-text-cell-2line"
+                :title="(scope.row.material && scope.row.material.name) || '--'"
+              >{{ (scope.row.material && scope.row.material.name) || '--' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            label="规格"
+            align="left"
+            header-align="center"
+            width="200"
+            min-width="150"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-text-wrap"
+            resizable
+          >
+            <template slot-scope="scope">
+              <span
+                class="detail-text-cell-2line"
+                :title="(scope.row.material && scope.row.material.speci) || '--'"
+              >{{ (scope.row.material && scope.row.material.speci) || '--' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            label="型号"
+            align="left"
+            header-align="center"
+            width="200"
+            min-width="150"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-text-wrap"
+            resizable
+          >
+            <template slot-scope="scope">
+              <span
+                class="detail-text-cell-2line"
+                :title="(scope.row.material && scope.row.material.model) || '--'"
+              >{{ (scope.row.material && scope.row.material.model) || '--' }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="单位" align="center" prop="material.fdUnit.unitName" width="180" show-overflow-tooltip resizable/>
           <el-table-column label="数量" prop="qty" width="120" show-overflow-tooltip resizable>
             <template slot-scope="scope">
@@ -385,7 +437,23 @@
               <span>{{ scope.row.batchNo || '--' }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="生产厂家" align="center" prop="material.fdFactory.factoryName" width="180" show-overflow-tooltip resizable/>
+          <el-table-column
+            label="生产厂家"
+            align="left"
+            header-align="center"
+            width="260"
+            min-width="200"
+            :show-overflow-tooltip="false"
+            class-name="detail-col-text-wrap"
+            resizable
+          >
+            <template slot-scope="scope">
+              <span
+                class="detail-text-cell-2line"
+                :title="(scope.row.material && scope.row.material.fdFactory && scope.row.material.fdFactory.factoryName) || '--'"
+              >{{ (scope.row.material && scope.row.material.fdFactory && scope.row.material.fdFactory.factoryName) || '--' }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="包装规格" align="center" prop="material.packageSpeci" width="180" show-overflow-tooltip resizable/>
           <el-table-column label="注册证号" align="center" prop="material.registerNo" width="180" show-overflow-tooltip resizable/>
           <el-table-column label="库房分类" align="center" prop="material.fdWarehouseCategory.warehouseCategoryName" width="180" show-overflow-tooltip resizable/>
@@ -514,6 +582,7 @@ export default {
         billStatus: null,
         userId: null,
         billType: null,
+        dateQueryType: 'bill',
         beginDate: this.getStatDate(),
         endDate: this.getEndDate(),
       },
@@ -742,6 +811,7 @@ export default {
     /** 重置按钮操作 */
     resetQuery() {
       this.resetForm("queryForm");
+      this.queryParams.dateQueryType = 'bill';
       this.queryParams.beginDate = null;
       this.queryParams.endDate = null;
       this.handleQuery();
@@ -1242,11 +1312,6 @@ export default {
   width: 150px;
 }
 
-/* 第二行单据状态对齐到仓库位置 */
-.app-container > .el-form .query-row-second {
-  position: relative;
-}
-
 /* 确保制单日期的两个日期选择器在同一行 */
 .app-container > .el-form .query-row-second .el-form-item {
   white-space: nowrap;
@@ -1258,12 +1323,11 @@ export default {
   flex-wrap: nowrap;
 }
 
+.app-container > .el-form .query-row-second .query-date-range-col {
+  min-width: 0;
+}
 .app-container > .el-form .query-row-second .query-status-col {
-  position: absolute;
-  left: 552px;
-  width: auto;
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 8px;
 }
 
 /* 弹窗内表单字段容器样式 */
@@ -1377,5 +1441,28 @@ export default {
 ::v-deep .el-table__body-wrapper::-webkit-scrollbar-track {
   background: #f1f1f1 !important;
   border-radius: 8px !important;
+}
+</style>
+
+<style>
+/* 修改入库弹窗明细：名称/规格/型号/生产厂家最多两行 */
+.local-modal-content .table-wrapper .el-table tbody td {
+  vertical-align: top;
+}
+.local-modal-content .table-wrapper .el-table td.detail-col-text-wrap .cell {
+  vertical-align: top;
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+  padding: 8px 10px 8px 12px;
+}
+.local-modal-content .table-wrapper .el-table td.detail-col-text-wrap .detail-text-cell-2line {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+  line-height: 1.45;
+  max-height: calc(1.45em * 2 + 2px);
 }
 </style>

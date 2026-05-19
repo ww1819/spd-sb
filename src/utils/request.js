@@ -20,13 +20,17 @@ const service = axios.create({
   timeout: 10000
 })
 
-// request拦截器
-service.interceptors.request.use(config => {
+// request拦截器（与 spd-ui 耗材端一致：带 Token 的请求先 RefreshTenant，避免 Vuex 租户丢失导致 X-Tenant-Id 缺失或与后端不一致）
+service.interceptors.request.use(async config => {
   // 是否需要设置 token
   const isToken = (config.headers || {}).isToken === false
+  const skipTenantSync = (config.headers || {}).skipTenantSync === true
   // 是否需要防止数据重复提交
   const isRepeatSubmit = (config.headers || {}).repeatSubmit === false
   if (getToken() && !isToken) {
+    if (!skipTenantSync) {
+      await store.dispatch('RefreshTenant')
+    }
     config.headers['Authorization'] = 'Bearer ' + getToken() // 让每个请求携带自定义token 请根据实际情况自行修改
     // SaaS 多租户：统一携带租户标识，便于后端做数据隔离与校验
     const tenant = store.getters.tenant
@@ -102,6 +106,12 @@ service.interceptors.response.use(res => {
     } else if (code === 601) {
       Message({ message: msg, type: 'warning' })
       return Promise.reject('error')
+    } else if (code === 602) {
+      // 高值库存明细校验：交由业务页弹窗展示行级原因，不打全局 Notification
+      return Promise.reject(res.data)
+    } else if (code === 603) {
+      // 低值耗材引用数量明细校验：同上
+      return Promise.reject(res.data)
     } else if (code !== 200) {
       Notification.error({ title: msg })
       return Promise.reject('error')

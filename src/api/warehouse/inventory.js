@@ -9,6 +9,15 @@ export function listInventory(query) {
   })
 }
 
+/** 弹窗/对账：仅需登录；支持 params.id 精确查一条（替代 GET /warehouse/inventory/:id 的 query 权限）。 */
+export function listInventoryPick(query) {
+  return request({
+    url: '/warehouse/inventory/pick/list',
+    method: 'get',
+    params: query
+  })
+}
+
 // 查询库存明细汇总列表
 export function listInventorySummary(query) {
   return request({

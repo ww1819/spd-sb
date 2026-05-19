@@ -18,6 +18,15 @@ export function listMaterialAll(query) {
   })
 }
 
+/** 采购计划添加明细：产品档案低敏分页 */
+export function listMaterialPurchasePlanPickPost(data) {
+  return request({
+    url: '/foundation/material/listPurchasePlanPick',
+    method: 'post',
+    data
+  })
+}
+
 // 查询耗材产品详细
 export function getMaterial(id) {
   return request({

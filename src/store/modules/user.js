@@ -1,4 +1,4 @@
-import { login, logout, getInfo } from '@/api/login'
+import { login, logout, getInfo, getCurrentTenant, switchTenant } from '@/api/login'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 
 const user = {
@@ -10,7 +10,8 @@ const user = {
     roles: [],
     permissions: [],
     // 租户信息：customerName 用于首页展示；customerId、customerCode 供请求使用，界面不展示
-    tenant: null
+    tenant: null,
+    tenantSyncedAt: 0
   },
 
   mutations: {
@@ -34,6 +35,9 @@ const user = {
     },
     SET_TENANT: (state, tenant) => {
       state.tenant = tenant
+    },
+    SET_TENANT_SYNCED_AT: (state, ts) => {
+      state.tenantSyncedAt = ts || 0
     }
   },
 
@@ -56,6 +60,7 @@ const user = {
           } else {
             commit('SET_TENANT', null)
           }
+          commit('SET_TENANT_SYNCED_AT', Date.now())
           resolve()
         }).catch(error => {
           reject(error)
@@ -86,6 +91,7 @@ const user = {
           } else {
             commit('SET_TENANT', null)
           }
+          commit('SET_TENANT_SYNCED_AT', Date.now())
           resolve(res)
         }).catch(error => {
           reject(error)
@@ -101,6 +107,7 @@ const user = {
           commit('SET_ROLES', [])
           commit('SET_PERMISSIONS', [])
           commit('SET_TENANT', null)
+          commit('SET_TENANT_SYNCED_AT', 0)
           removeToken()
           resolve()
         }).catch(error => {
@@ -114,8 +121,59 @@ const user = {
       return new Promise(resolve => {
         commit('SET_TOKEN', '')
         commit('SET_TENANT', null)
+        commit('SET_TENANT_SYNCED_AT', 0)
         removeToken()
         resolve()
+      })
+    },
+    // 已登录平台管理员切换租户，重签 token 并刷新上下文
+    SwitchTenant({ commit, dispatch }, payload) {
+      const customerId = payload && payload.customerId ? String(payload.customerId).trim() : ''
+      const systemType = payload && payload.systemType ? payload.systemType : 'equipment'
+      return new Promise((resolve, reject) => {
+        if (!customerId) {
+          reject(new Error('请选择租户'))
+          return
+        }
+        switchTenant(customerId, systemType).then(res => {
+          const token = res && res.token
+          if (!token) {
+            reject(new Error('切换失败：未返回 token'))
+            return
+          }
+          setToken(token)
+          commit('SET_TOKEN', token)
+          if (res.tenant) {
+            commit('SET_TENANT', res.tenant)
+          } else {
+            commit('SET_TENANT', null)
+          }
+          commit('SET_TENANT_SYNCED_AT', Date.now())
+          dispatch('GetInfo').then(() => resolve(res)).catch(reject)
+        }).catch(reject)
+      })
+    },
+    /** 与耗材端一致：周期性从服务端刷新租户，保证请求头 X-Tenant-Id 与登录态一致 */
+    RefreshTenant({ commit, state }, force = false) {
+      return new Promise((resolve) => {
+        if (!state.token) {
+          resolve(null)
+          return
+        }
+        const now = Date.now()
+        if (!force && state.tenant && state.tenant.customerId && (now - (state.tenantSyncedAt || 0) < 15000)) {
+          resolve(state.tenant)
+          return
+        }
+        getCurrentTenant().then(res => {
+          if (res && res.tenant) {
+            commit('SET_TENANT', res.tenant)
+          }
+          commit('SET_TENANT_SYNCED_AT', Date.now())
+          resolve(res && res.tenant ? res.tenant : null)
+        }).catch(() => {
+          resolve(null)
+        })
       })
     }
   }

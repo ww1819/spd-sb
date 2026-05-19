@@ -193,7 +193,7 @@
           <el-row :gutter="8">
             <el-col :span="4">
               <el-form-item label="仓库" prop="warehouseId">
-                <SelectWarehouse v-model="form.warehouseId" :disabled="!action" includeWarehouseType="高值"/>
+                <SelectWarehouse v-model="form.warehouseId" :disabled="!action || warehouseSupplierLocked" includeWarehouseType="高值"/>
               </el-form-item>
               <el-form-item label="总金额">
                 <el-input :value="getTotalAmount()" :disabled="true" style="width: 140px; background-color: #fff;">
@@ -202,7 +202,7 @@
             </el-col>
             <el-col :span="4">
               <el-form-item label="供应商" prop="supplerId">
-                <SelectSupplier v-model="form.supplerId" :disabled="!action"/>
+                <SelectSupplier v-model="form.supplerId" :disabled="!action || warehouseSupplierLocked"/>
               </el-form-item>
             </el-col>
             <el-col :span="4">
@@ -249,6 +249,19 @@
               </el-form-item>
             </el-col>
           </el-row>
+          <el-row :gutter="8" v-show="action" style="margin-top: 4px;">
+            <el-col :span="16">
+              <el-form-item label="扫院内码" label-width="80px">
+                <el-input
+                  v-model="scanCodeInput"
+                  placeholder="请先选择仓库与供应商，在此回车扫描院内码添加明细"
+                  :disabled="!action || scanThDisabled"
+                  clearable
+                  @keyup.enter.native="onScanDepotInHospitalCode"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
         </div>
 
         <div class="modal-body">
@@ -258,6 +271,11 @@
           </el-col>
 
           <div v-show="action">
+            <el-col :span="1.5">
+              <el-button type="primary" plain icon="el-icon-link" size="small"
+                         v-hasPermi="['gz:refDoc:query']"
+                         @click="openRefAcceptanceTh">引用验收单</el-button>
+            </el-col>
             <el-col :span="1.5">
               <el-button type="primary" icon="el-icon-plus" size="small" @click="checkMaterialBtn">添加</el-button>
             </el-col>
@@ -388,6 +406,22 @@
       @closeDialog="closeDialog"
       @selectData="selectData"
     ></SelectGzDepotInventory>
+
+    <el-dialog title="引用备货验收单（当前仓库有库存且供应商一致）" :visible.sync="refAccThOpen" width="800px" append-to-body>
+      <el-table :data="refAccThList" v-loading="refAccThLoading" highlight-current-row
+                @row-click="row => { refPickAccOrderId = row.id; refPickAccOrderNo = row.orderNo }" max-height="360" border size="small">
+        <el-table-column type="index" width="50" label="#" align="center"/>
+        <el-table-column prop="orderNo" label="验收单号" min-width="140" show-overflow-tooltip/>
+        <el-table-column label="仓库" min-width="100" show-overflow-tooltip>
+          <template slot-scope="scope">{{ (scope.row.warehouse && scope.row.warehouse.name) || '--' }}</template>
+        </el-table-column>
+      </el-table>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="refAccThOpen = false">取 消</el-button>
+        <el-button type="primary" @click="confirmRefAcceptanceTh">确 定</el-button>
+      </span>
+    </el-dialog>
+
     <!-- 隐藏的打印组件（用于直接打印，不显示对话框） -->
     <div v-show="false">
       <gz-order-print v-if="printRowData" :row="printRowData" :orientation="printOrientation || 'landscape'" :printType="'refund'" ref="receiptOrderPrintRefAuto"></gz-order-print>
@@ -397,6 +431,9 @@
 
 <script>
 import { listGoods, getGoods, delGoods, addGoods, updateGoods, auditGoods } from "@/api/gz/goods";
+import { listDepotInventory } from "@/api/gz/depotInventory";
+import { listAuditedAcceptance, listAcceptanceDepotLines } from "@/api/gz/refDoc";
+import { tryShowGzInventoryError } from '@/utils/gzInventoryValidate';
 import { parseTime } from "@/utils/ruoyi";
 import SelectSupplier from "@/components/SelectModel/SelectSupplier";
 import SelectMaterial from "@/components/SelectModel/SelectMaterial";
@@ -432,12 +469,18 @@ export default {
       multiple: true,
       // 显示搜索条件
       showSearch: true,
+      refAccThOpen: false,
+      refAccThList: [],
+      refAccThLoading: false,
+      refPickAccOrderId: null,
+      refPickAccOrderNo: null,
       // 总条数
       total: 0,
       // 高值退货表格数据
       goodsList: [],
       // 高值退货明细表格数据
       gzRefundGoodsEntryList: [],
+      scanCodeInput: '',
       // 弹出层标题
       title: "",
       // 是否显示弹出层
@@ -460,13 +503,83 @@ export default {
       form: {},
       // 表单校验
       rules: {
+        warehouseId: [
+          { required: true, message: "请选择仓库", trigger: "change" }
+        ],
+        supplerId: [
+          { required: true, message: "请选择供应商", trigger: "change" }
+        ],
       }
     };
+  },
+  computed: {
+    warehouseSupplierLocked() {
+      return this.gzRefundGoodsEntryList && this.gzRefundGoodsEntryList.length > 0;
+    },
+    scanThDisabled() {
+      return !this.form.warehouseId || !this.form.supplerId;
+    },
   },
   created() {
     this.getList();
   },
   methods: {
+    onScanDepotInHospitalCode() {
+      if (!this.action) {
+        return;
+      }
+      if (!this.form.warehouseId || !this.form.supplerId) {
+        this.$message.warning("请先选择仓库和供应商");
+        return;
+      }
+      const raw = (this.scanCodeInput || "").trim();
+      if (!raw) {
+        return;
+      }
+      listDepotInventory({
+        pageNum: 1,
+        pageSize: 30,
+        inHospitalCode: raw,
+        warehouseId: this.form.warehouseId,
+        supplierId: this.form.supplerId,
+      }).then((res) => {
+        const rows = res.rows || [];
+        const hit = rows.find((r) => r && r.inHospitalCode && String(r.inHospitalCode).trim() === raw);
+        if (!hit) {
+          this.$message.warning("当前仓库/供应商下无该院内码可用备货");
+          return;
+        }
+        if (this.gzRefundGoodsEntryList.some((e) => e && e.inHospitalCode && String(e.inHospitalCode).trim() === raw)) {
+          this.$message.warning("明细中已存在该院内码");
+          this.scanCodeInput = "";
+          return;
+        }
+        const qty = hit.qty != null && parseFloat(hit.qty) > 0 ? String(hit.qty) : "1";
+        const price = hit.unitPrice != null ? hit.unitPrice : "";
+        const obj = {
+          materialId: hit.materialId,
+          materialName: (hit.material && hit.material.name) || "",
+          speci: (hit.material && hit.material.speci) || "",
+          model: (hit.material && hit.material.model) || "",
+          qty,
+          price,
+          amt: qty && price ? (parseFloat(qty) * parseFloat(price)).toFixed(2) : "",
+          batchNo: hit.batchNo || "",
+          batchNumber: hit.materialNo || "",
+          beginTime: hit.materialDate || "",
+          endTime: hit.endTime || "",
+          inHospitalCode: raw,
+          masterBarcode: hit.masterBarcode || "",
+          secondaryBarcode: hit.secondaryBarcode || "",
+          supplierId: this.form.supplerId || hit.supplierId || null,
+          supplierName: (hit.material && hit.material.supplier && hit.material.supplier.name) || "",
+          remark: "",
+        };
+        this.gzRefundGoodsEntryList.push(obj);
+        this.scanCodeInput = "";
+        this.$message.success("已添加院内码 " + raw);
+      }).catch(() => {});
+    },
     /** 查询高值退货列表 */
     getList() {
       this.loading = true;
@@ -575,6 +688,7 @@ export default {
         remark: null
       };
       this.gzRefundGoodsEntryList = [];
+      this.scanCodeInput = "";
       this.resetForm("form");
     },
     //数量改变事件
@@ -641,6 +755,72 @@ export default {
       });
     },
     /** 新增按钮操作 */
+    openRefAcceptanceTh() {
+      if (!this.form.warehouseId || !this.form.supplerId) {
+        this.$message.warning('请先选择仓库与供应商');
+        return;
+      }
+      if (this.gzRefundGoodsEntryList && this.gzRefundGoodsEntryList.length > 0) {
+        this.$message.warning('已有明细时请先清空再引用');
+        return;
+      }
+      this.refPickAccOrderId = null;
+      this.refPickAccOrderNo = null;
+      this.refAccThOpen = true;
+      this.refAccThLoading = true;
+      listAuditedAcceptance({ pageNum: 1, pageSize: 100 }).then(res => {
+        this.refAccThList = res.data || res.rows || [];
+        this.refAccThLoading = false;
+      }).catch(() => { this.refAccThLoading = false; });
+    },
+    confirmRefAcceptanceTh() {
+      if (!this.refPickAccOrderId) {
+        this.$message.warning('请选择验收单');
+        return;
+      }
+      listAcceptanceDepotLines(this.refPickAccOrderId, this.form.warehouseId).then(res => {
+        let rows = res.data || [];
+        rows = rows.filter(r => r.supplierId && String(r.supplierId) === String(this.form.supplerId));
+        if (!rows.length) {
+          this.$message.warning('该验收单在当前仓库无与表头供应商一致的可用备货库存');
+          return;
+        }
+        rows.forEach(r => this.gzRefundGoodsEntryList.push(this.mapDepotToThEntry(r)));
+        this.refAccThOpen = false;
+        this.$message.success('已带入 ' + rows.length + ' 条明细');
+      });
+    },
+    mapDepotToThEntry(r) {
+      const m = r.material || {};
+      const qty = r.qty != null ? String(r.qty) : '1';
+      const price = r.unitPrice != null ? r.unitPrice : '';
+      let amt = r.amt;
+      if (amt == null && price && qty) {
+        amt = (parseFloat(price) * parseFloat(qty)).toFixed(2);
+      }
+      return {
+        materialId: r.materialId,
+        material: r.material,
+        materialName: m.name || '',
+        speci: m.speci || '',
+        model: m.model || '',
+        qty,
+        price,
+        amt,
+        batchNo: r.batchNo,
+        batchNumber: r.materialNo,
+        beginTime: r.materialDate,
+        endTime: r.endTime,
+        inHospitalCode: r.inHospitalCode,
+        masterBarcode: r.masterBarcode,
+        secondaryBarcode: r.secondaryBarcode,
+        supplierId: r.supplierId,
+        refSrcAcceptanceId: String(r.orderId != null ? r.orderId : (this.refPickAccOrderId || '')),
+        refSrcAcceptanceNo: r.orderNo || this.refPickAccOrderNo || '',
+        refSrcOrderEntryId: r.orderEntryId != null ? String(r.orderEntryId) : '',
+        refSrcBarcodeLineId: r.inhospitalcodeListId != null ? String(r.inhospitalcodeListId) : ''
+      };
+    },
     handleAdd() {
       this.reset();
       this.open = true;
@@ -685,10 +865,17 @@ export default {
     submitForm() {
       this.$refs["form"].validate(valid => {
         if (valid) {
-          this.form.gzRefundGoodsEntryList = this.gzRefundGoodsEntryList;
+          this.form.gzRefundGoodsEntryList = this.gzRefundGoodsEntryList.map(item => ({
+            ...item,
+            supplierId: this.form.supplerId || item.supplierId || null,
+            warehouseId: this.form.warehouseId || item.warehouseId || null,
+            billNo: this.form.goodsNo || item.billNo || null
+          }));
           if (this.form.id != null) {
             updateGoods(this.form).then(response => {
-              this.$modal.msgSuccess("修改成功");
+              this.$modal.msgSuccess((response && response.msg) || "修改成功");
+              const filteredCount = Number(response && response.data && response.data.dedupFilteredCount) || 0;
+              if (filteredCount > 0) this.$message.warning(`后台已自动过滤 ${filteredCount} 条重复明细`);
               // 不关闭弹窗，刷新列表数据
               this.getList();
               // 重新获取最新数据以更新表单
@@ -710,10 +897,12 @@ export default {
                   });
                 }
               });
-            });
+            }).catch(err => { tryShowGzInventoryError(this, err); });
           } else {
             addGoods(this.form).then(response => {
-              this.$modal.msgSuccess("新增成功");
+              this.$modal.msgSuccess((response && response.msg) || "新增成功");
+              const filteredCount = Number(response && response.data && response.data.dedupFilteredCount) || 0;
+              if (filteredCount > 0) this.$message.warning(`后台已自动过滤 ${filteredCount} 条重复明细`);
               // 不关闭弹窗，刷新列表数据
               this.getList();
               // 如果是新增，保存后获取新创建的ID并更新表单
@@ -740,7 +929,7 @@ export default {
                   this.title = "修改高值退货";
                 });
               }
-            });
+            }).catch(err => { tryShowGzInventoryError(this, err); });
           }
         }
       });
@@ -767,7 +956,7 @@ export default {
       }).then(() => {
         this.getList();
         this.$modal.msgSuccess("审核成功");
-      }).catch(() => {});
+      }).catch(err => { tryShowGzInventoryError(this, err); });
     },
     /** 打印按钮操作 */
     handlePrint(row, print){

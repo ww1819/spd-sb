@@ -95,6 +95,19 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/tenant-switch',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: 'index',
+        component: () => import('@/views/system/tenantSwitch/index'),
+        name: 'TenantSwitch',
+        meta: { title: '租户切换', icon: 'peoples' }
+      }
+    ]
+  },
+  {
     path: '/test',
     component: Layout,
     hidden: true,
@@ -188,6 +201,30 @@ export const dynamicRoutes = [
     redirect: 'noRedirect',
     name: 'Equipment',
     meta: { title: '设备管理', icon: 'equipment' },
+    permissions: [
+      'equipment:info:list',
+      'equipment:assetLedger:list',
+      'equipment:assetInventory:list',
+      'equipment:brand:list',
+      'equipment:manufacturer:list',
+      'equipment:supplier:list',
+      'equipment:measuringCategory:list',
+      'equipment:assetCategory:list',
+      'equipment:accessory:list',
+      'equipment:equipmentInspect:list',
+      'equipment:equipmentRepair:list',
+      'equipment:equipmentMaintain:list',
+      'equipment:equipmentStorage:list',
+      'equipment:equipmentReturn:list',
+      'equipment:equipmentReceive:list',
+      'equipment:equipmentBorrow:list',
+      'equipment:equipmentCategory:list',
+      'equipment:equipmentFile:list',
+      'equipment:equipmentScrap:list',
+      'equipment:equipmentTransfer:list',
+      'equipment:equipmentAllocate:list',
+      'equipment:equipmentCheck:list'
+    ],
     children: [
       {
         path: 'equipmentInfo',
@@ -284,6 +321,66 @@ export const dynamicRoutes = [
         component: () => import('@/views/equipment/purchaseApproval/index'),
         name: 'PurchaseApproval',
         meta: { title: '采购审批', icon: 'clipboard' }
+      },
+      {
+        path: 'equipmentAccessory',
+        component: () => import('@/views/equipment/equipmentAccessory/index'),
+        name: 'EquipmentAccessory',
+        meta: { title: '设备配件', icon: 'component' }
+      },
+      {
+        path: 'assetLedger',
+        component: () => import('@/views/equipment/assetLedger/index'),
+        name: 'AssetLedger',
+        meta: { title: '资产台账', icon: 'money' }
+      },
+      {
+        path: 'assetInventory',
+        component: () => import('@/views/equipment/assetInventory/index'),
+        name: 'AssetInventory',
+        meta: { title: '资产盘点', icon: 'list' }
+      },
+      {
+        path: 'brand',
+        component: () => import('@/views/equipment/brand/index'),
+        name: 'EquipmentBrand',
+        meta: { title: '设备品牌', icon: 'star' }
+      },
+      {
+        path: 'manufacturer',
+        component: () => import('@/views/equipment/manufacturer/index'),
+        name: 'EquipmentManufacturer',
+        meta: { title: '生产厂家', icon: 'build' }
+      },
+      {
+        path: 'supplier',
+        component: () => import('@/views/equipment/supplier/index'),
+        name: 'EquipmentSupplier',
+        meta: { title: '设备供应商', icon: 'shopping' }
+      },
+      {
+        path: 'measuringCategory',
+        component: () => import('@/views/equipment/measuringCategory/index'),
+        name: 'MeasuringCategory',
+        meta: { title: '计量器具分类', icon: 'tree-table' }
+      },
+      {
+        path: 'assetCategory',
+        component: () => import('@/views/equipment/assetCategory/index'),
+        name: 'AssetCategory',
+        meta: { title: '资产分类', icon: 'tree' }
+      },
+      {
+        path: 'equipmentInspection',
+        component: () => import('@/views/equipment/equipmentInspection/index'),
+        name: 'EquipmentInspection',
+        meta: { title: '设备检验', icon: 'eye' }
+      },
+      {
+        path: 'equipmentUse',
+        component: () => import('@/views/equipment/equipmentUse/index'),
+        name: 'EquipmentUse',
+        meta: { title: '设备使用', icon: 'list' }
       }
     ]
   }

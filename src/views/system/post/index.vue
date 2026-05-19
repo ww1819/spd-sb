@@ -311,6 +311,7 @@ import {
   saveWorkGroupWarehouses,
   saveWorkGroupDepts,
   syncWorkGroupToUsers,
+  getWorkGroupSyncStatus,
   listUserIdsByGroupId,
   addWorkGroupUsers,
   removeWorkGroupUser
@@ -409,11 +410,17 @@ export default {
         postSort: [
           { required: true, message: "工作组排序不能为空", trigger: "blur" }
         ]
-      }
+      },
+      syncMenuPollingTimer: null,
+      syncMenuPollingGroupId: null,
+      syncMenuPollingTries: 0
     };
   },
   created() {
     this.getList();
+  },
+  beforeDestroy() {
+    this.stopSyncMenuPolling();
   },
   methods: {
     /** 查询工作组列表（设备系统取 sb_work_group 表） */
@@ -582,12 +589,58 @@ export default {
       }
       const groupId = this.ids[0];
       this.$modal.confirm("是否确认将该工作组的【菜单权限】同步到组内所有用户？").then(() => {
-        return getWorkGroupMenuIds(groupId);
-      }).then(res => {
-        const menuIds = res.data || res || [];
-        return this.syncMenuToUsers(groupId, Array.isArray(menuIds) ? menuIds : []);
+        return syncWorkGroupToUsers(groupId);
+      }).then(() => {
+        this.$modal.msgSuccess("已提交后台同步任务，请稍后刷新查看结果");
+        this.startSyncMenuPolling(groupId);
       }).catch(e => {
         if (e !== "cancel") this.$modal.msgError(e?.msg || e?.message || "同步菜单权限失败");
+      });
+    },
+    startSyncMenuPolling(groupId) {
+      this.stopSyncMenuPolling();
+      this.syncMenuPollingGroupId = groupId;
+      this.syncMenuPollingTries = 0;
+      this.syncMenuPollingTimer = setInterval(() => {
+        this.pollSyncMenuStatus();
+      }, 2000);
+      this.pollSyncMenuStatus();
+    },
+    stopSyncMenuPolling() {
+      if (this.syncMenuPollingTimer) {
+        clearInterval(this.syncMenuPollingTimer);
+        this.syncMenuPollingTimer = null;
+      }
+      this.syncMenuPollingGroupId = null;
+      this.syncMenuPollingTries = 0;
+    },
+    pollSyncMenuStatus() {
+      const groupId = this.syncMenuPollingGroupId;
+      if (!groupId) return;
+      this.syncMenuPollingTries += 1;
+      getWorkGroupSyncStatus(groupId).then(res => {
+        const s = res && (res.data || res) ? (res.data || res) : {};
+        const status = (s.status || "").toUpperCase();
+        if (status === "SUCCESS") {
+          const affected = s.affected != null ? s.affected : 0;
+          this.$modal.msgSuccess(`同步菜单完成，影响 ${affected} 条用户权限`);
+          this.stopSyncMenuPolling();
+          return;
+        }
+        if (status === "FAILED") {
+          this.$modal.msgError(s.message || "同步菜单失败");
+          this.stopSyncMenuPolling();
+          return;
+        }
+        if (this.syncMenuPollingTries >= 30) {
+          this.$modal.msgWarning("同步仍在后台执行，请稍后手动刷新查看结果");
+          this.stopSyncMenuPolling();
+        }
+      }).catch(() => {
+        if (this.syncMenuPollingTries >= 30) {
+          this.$modal.msgWarning("同步状态查询超时，请稍后手动刷新查看结果");
+          this.stopSyncMenuPolling();
+        }
       });
     },
     /** 同步仓库：仅将当前工作组的仓库权限同步到组内所有用户 */
@@ -624,6 +677,22 @@ export default {
         if (e !== "cancel") this.$modal.msgError(e?.msg || e?.message || "同步科室权限失败");
       });
     },
+    /** 用户详情中科室/仓库/菜单/工作组 ID 多在响应根级；若仅从 axios 根取漏了嵌套，回退 data，避免误传空数组清空 sb_work_group_user */
+    pickSbUserAssociationsFromDetail(userResponse) {
+      const d = userResponse && userResponse.data ? userResponse.data : {};
+      const numArr = (a) => (Array.isArray(a) ? a.map(Number).filter(n => !isNaN(n)) : []);
+      const strArr = (a) => (Array.isArray(a) ? a.map(String).filter(s => s) : []);
+      const wh = userResponse.warehouseIds != null ? userResponse.warehouseIds : d.warehouseIds;
+      const dept = userResponse.departmentIds != null ? userResponse.departmentIds : d.departmentIds;
+      const menu = userResponse.menuIds != null ? userResponse.menuIds : d.menuIds;
+      const wg = userResponse.workGroupIds != null ? userResponse.workGroupIds : d.workGroupIds;
+      return {
+        warehouseIds: numArr(wh),
+        departmentIds: numArr(dept),
+        menuIds: strArr(menu),
+        workGroupIds: strArr(wg)
+      };
+    },
     /** 获取工作组下的所有用户（从 sb_work_group_user 接口取组内用户ID，再拉取详情供同步权限用） */
     getUsersByPostId(postId) {
       return listUserIdsByGroupId(postId).then(res => {
@@ -644,13 +713,14 @@ export default {
         }
         const updatePromises = users.map(userResponse => {
           const userData = userResponse.data;
+          const assoc = this.pickSbUserAssociationsFromDetail(userResponse);
           const payload = {
             ...userData,
             userId: userData.userId,
             menuIds: menuIds,
-            workGroupIds: userResponse.workGroupIds || [],
-            departmentIds: userResponse.departmentIds || [],
-            warehouseIds: userResponse.warehouseIds || []
+            workGroupIds: assoc.workGroupIds,
+            departmentIds: assoc.departmentIds,
+            warehouseIds: assoc.warehouseIds
           };
           return updateUser(payload);
         });
@@ -676,13 +746,14 @@ export default {
         }
         const updatePromises = users.map(userResponse => {
           const userData = userResponse.data;
+          const assoc = this.pickSbUserAssociationsFromDetail(userResponse);
           const payload = {
             ...userData,
             userId: userData.userId,
             warehouseIds: warehouseIds,
-            workGroupIds: userResponse.workGroupIds || [],
-            menuIds: userResponse.menuIds || [],
-            departmentIds: userResponse.departmentIds || []
+            workGroupIds: assoc.workGroupIds,
+            menuIds: assoc.menuIds,
+            departmentIds: assoc.departmentIds
           };
           return updateUser(payload);
         });
@@ -708,13 +779,14 @@ export default {
         }
         const updatePromises = users.map(userResponse => {
           const userData = userResponse.data;
+          const assoc = this.pickSbUserAssociationsFromDetail(userResponse);
           const payload = {
             ...userData,
             userId: userData.userId,
             departmentIds: departmentIds,
-            workGroupIds: userResponse.workGroupIds || [],
-            menuIds: userResponse.menuIds || [],
-            warehouseIds: userResponse.warehouseIds || []
+            workGroupIds: assoc.workGroupIds,
+            menuIds: assoc.menuIds,
+            warehouseIds: assoc.warehouseIds
           };
           return updateUser(payload);
         });

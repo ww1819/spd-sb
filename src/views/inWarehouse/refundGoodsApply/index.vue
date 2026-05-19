@@ -27,7 +27,11 @@
 
       <el-row :gutter="16" class="query-row-second">
         <el-col :span="12">
-          <el-form-item label="日期" style="display: flex; align-items: center;">
+          <el-form-item label="日期条件" style="display: flex; align-items: center; flex-wrap: wrap;">
+            <el-radio-group v-model="queryParams.dateQueryType" size="small" style="margin-right: 10px; margin-bottom: 4px;">
+              <el-radio-button label="bill">制单日期</el-radio-button>
+              <el-radio-button label="audit">审核日期</el-radio-button>
+            </el-radio-group>
             <el-date-picker
                             v-model="queryParams.beginDate"
                             type="date"
@@ -218,12 +222,12 @@
         <el-row :gutter="8">
           <el-col :span="4">
             <el-form-item label="供应商" prop="supplerId">
-              <SelectSupplier v-model="form.supplerId"/>
+              <SelectSupplier v-model="form.supplerId" :value2="stkIoBillEntryList.length > 0"/>
             </el-form-item>
           </el-col>
           <el-col :span="4">
             <el-form-item label="仓库" prop="warehouseId">
-              <SelectWarehouse v-model="form.warehouseId" excludeWarehouseType="高值"/>
+              <SelectWarehouse v-model="form.warehouseId" :value2="stkIoBillEntryList.length > 0" excludeWarehouseType="高值"/>
             </el-form-item>
           </el-col>
           <el-col :span="4">
@@ -308,10 +312,10 @@
               <el-button type="primary" icon="el-icon-plus" size="small" @click="checkMaterialBtn">添加</el-button>
             </el-col>
             <el-col :span="1.5">
-              <el-button type="outline" icon="el-icon-ref" size="small" @click="refRkApply">引用入库单</el-button>
+              <el-button type="outline" icon="el-icon-ref" size="small" :disabled="stkIoBillEntryList.length > 0" @click="refRkApply">引用入库单</el-button>
             </el-col>
             <el-col :span="1.5">
-              <el-button type="outline" icon="el-icon-ref" size="small" @click="refTkApply">引用科室退库单</el-button>
+              <el-button type="outline" icon="el-icon-ref" size="small" :disabled="stkIoBillEntryList.length > 0" @click="refTkApply">引用科室退库单</el-button>
             </el-col>
             <el-col :span="1.5">
               <el-button type="danger" icon="el-icon-delete" size="small" @click="handleDeleteStkIoBillEntry">删除</el-button>
@@ -395,6 +399,18 @@
               </el-date-picker>
             </template>
           </el-table-column>
+          <el-table-column label="退货已审占用" align="center" width="110" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.srcReturnAuditedRefQty) }}</template>
+          </el-table-column>
+          <el-table-column label="退货待审占用" align="center" width="110" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.srcReturnPendingRefQty) }}</template>
+          </el-table-column>
+          <el-table-column label="退货可引用" align="center" width="100" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.srcReturnRefableQty) }}</template>
+          </el-table-column>
+          <el-table-column label="库存数" align="center" width="90" show-overflow-tooltip resizable>
+            <template slot-scope="scope">{{ formatRefQty(scope.row.linkedStkQty) }}</template>
+          </el-table-column>
           <el-table-column label="备注" prop="remark" width="200" show-overflow-tooltip resizable>
             <template slot-scope="scope">
               <el-input v-model="scope.row.remark" placeholder="请输入备注" />
@@ -424,6 +440,7 @@
       :DialogComponentShow="DialogComponentShow"
       :warehouseValue="warehouseValue"
       :supplierValue="supplierValue"
+      :hide-supplier-query="true"
       @closeDialog="closeDialog"
       @selectData="selectData"
     ></SelectInventory>
@@ -477,6 +494,7 @@ import SelectTkApply from "@/components/SelectModel/SelectTkApply";
 import {createEntriesByDApply} from "@/api/warehouse/outWarehouse";
 import refundGoodsOrderPrint from "@/views/inWarehouse/refundGoodsAudit/refundGoodsOrderPrint.vue";
 import RMBConverter from "@/utils/tools";
+import { tryShowDocRefQtyError } from '@/utils/hcDocRefQtyValidate'
 import {STOCK_IN_TEMPLATE} from '@/utils/printData';
 
 export default {
@@ -528,6 +546,7 @@ export default {
         billStatus: null,
         userId: null,
         billType: null,
+        dateQueryType: 'bill',
         beginDate: this.getStatDate(),
         endDate: this.getEndDate(),
       },
@@ -562,7 +581,7 @@ export default {
           return;
         }
         const values = data.map(item => Number(item[column.property]));
-        if(index === 3 || index === 4 || index === 5){
+        if (column.property === 'unitPrice' || column.property === 'qty' || column.property === 'amt') {
           if (!values.every(value => isNaN(value))) {
             sums[index] = values.reduce((prev, curr) => {
               const value = Number(curr);
@@ -575,7 +594,7 @@ export default {
             sums[index] = sums[index].toFixed(2);
           }
 
-          if(index === 5){
+          if (column.property === 'amt') {
             let res = parseFloat(sums[index]);
             if(!isNaN(res)){
               let parRes = res.toFixed(2);
@@ -585,6 +604,12 @@ export default {
         }
       });
       return sums;
+    },
+    formatRefQty(v) {
+      if (v === null || v === undefined || v === '') {
+        return '--';
+      }
+      return v;
     },
     getTotalSummaries(param) {
       const { columns, data } = param;
@@ -628,13 +653,13 @@ export default {
       });
     },
     checkMaterialBtn() {
-      if(!this.form.warehouseId) {
-        this.$message({ message: '请选择仓库', type: 'warning' })
+      if (!this.form.warehouseId) {
+        this.$message({ message: '请先选择仓库', type: 'warning' })
         return
       }
 
-      if(!this.form.supplerId) {
-        this.$message({ message: '请选择供应商', type: 'warning' })
+      if (!this.form.supplerId) {
+        this.$message({ message: '请先选择供应商', type: 'warning' })
         return
       }
 
@@ -759,6 +784,7 @@ export default {
     /** 重置按钮操作 */
     resetQuery() {
       this.resetForm("queryForm");
+      this.queryParams.dateQueryType = 'bill';
       this.queryParams.beginDate = null;
       this.queryParams.endDate = null;
       this.handleQuery();
@@ -849,14 +875,14 @@ export default {
               this.getList();
               // 保存成功后不关闭弹窗，允许继续办理业务
               // this.open = false;
-            });
+            }).catch(err => { tryShowDocRefQtyError(this, err) });
           } else {
             addThInventory(this.form).then(response => {
               this.$modal.msgSuccess("新增成功");
               this.getList();
               // 保存成功后不关闭弹窗，允许继续办理业务
               // this.open = false;
-            });
+            }).catch(err => { tryShowDocRefQtyError(this, err) });
           }
         }
       });
@@ -989,35 +1015,41 @@ export default {
       this.DialogRkApplyComponentShow = false
     },
     refRkApply() {
-      if(!this.form.warehouseId) {
-        this.$message({ message: '请先选择仓库', type: 'warning' })
-        return
+      if (this.stkIoBillEntryList.length > 0) {
+        this.$message({ message: '已有退货明细时不能引用单据', type: 'warning' });
+        return;
       }
-
-      //打开“弹窗组件”
-      this.DialogRkApplyComponentShow = true
+      this.DialogRkApplyComponentShow = true;
       this.warehouseValue = this.form.warehouseId;
-      this.departmentValue = this.form.departmentId;
     },
     selectRkApplyData(val) {
-      // 假设 val 是科室申请单对象或数组，取 id
-      const rkApplyId = Array.isArray(val) ? val[0].id : val.id;
-      if (!rkApplyId) return;
+      const rows = Array.isArray(val) ? val : (val ? [val] : []);
+      const first = rows[0];
+      const rkApplyId = first && first.id;
+      if (!rkApplyId) {
+        this.$message.warning('请先选择有效的入库单');
+        return;
+      }
 
-      const rkApplyIdStr = String(rkApplyId);
-      var param = {
-        rkApplyId: rkApplyIdStr
-      };
-      createThEntriesByRkApply(param).then(response => {
+      const keepCreater = this.form.createrName;
+      const keepCreateBy = this.form.createBy;
+      createThEntriesByRkApply({ rkApplyId: String(rkApplyId) }).then(response => {
         if (response && response.data) {
           this.form = response.data;
-          this.stkIoBillEntryList = response.data.stkIoBillEntryList;
+          if (!this.form.createrName && keepCreater) {
+            this.form.createrName = keepCreater;
+          }
+          if (!this.form.createBy && keepCreateBy) {
+            this.form.createBy = keepCreateBy;
+          }
+          this.stkIoBillEntryList = response.data.stkIoBillEntryList || [];
           this.form.billStatus = '1';
           this.form.billType = '301';
           this.DialogRkApplyComponentShow = false;
         }
-      }).catch(() => {
-        this.$message.error("加载入库单明细失败");
+      }).catch((err) => {
+        const msg = (err && err.message) || (err && err.response && err.response.data && err.response.data.msg) || '';
+        this.$message.error(msg ? `加载入库单明细失败：${msg}` : '加载入库单明细失败');
       });
     },
     closeTkApplyDialog() {
@@ -1025,29 +1057,29 @@ export default {
       this.DialogTkApplyComponentShow = false
     },
     refTkApply() {
-      if(!this.form.warehouseId) {
-        this.$message({ message: '请先选择仓库', type: 'warning' })
-        return
+      if (this.stkIoBillEntryList.length > 0) {
+        this.$message({ message: '已有退货明细时不能引用单据', type: 'warning' });
+        return;
       }
-
-      //打开“弹窗组件”
-      this.DialogTkApplyComponentShow = true
+      this.DialogTkApplyComponentShow = true;
       this.warehouseValue = this.form.warehouseId;
-      this.departmentValue = this.form.departmentId;
     },
     selectTkApplyData(val) {
-      // 假设 val 是科室申请单对象或数组，取 id
       const tkApplyId = Array.isArray(val) ? val[0].id : val.id;
       if (!tkApplyId) return;
 
-      const tkApplyIdStr = String(tkApplyId);
-      var param = {
-        tkApplyId: tkApplyIdStr
-      };
-      createThEntriesByTkApply(param).then(response => {
+      const keepCreater = this.form.createrName;
+      const keepCreateBy = this.form.createBy;
+      createThEntriesByTkApply({ tkApplyId: String(tkApplyId) }).then(response => {
         if (response && response.data) {
           this.form = response.data;
-          this.stkIoBillEntryList = response.data.stkIoBillEntryList;
+          if (!this.form.createrName && keepCreater) {
+            this.form.createrName = keepCreater;
+          }
+          if (!this.form.createBy && keepCreateBy) {
+            this.form.createBy = keepCreateBy;
+          }
+          this.stkIoBillEntryList = response.data.stkIoBillEntryList || [];
           this.form.billStatus = '1';
           this.form.billType = '301';
           this.DialogTkApplyComponentShow = false;

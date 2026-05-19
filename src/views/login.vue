@@ -177,7 +177,16 @@ export default {
             Cookies.remove("customerId");
           }
           this.$store.dispatch("Login", this.loginForm).then(() => {
-            this.$router.push({ path: this.redirect || "/" }).catch(()=>{});
+            const username = (this.loginForm.username || '').trim()
+            const redirectPath = this.redirect || '/'
+            if (username && username.toLowerCase() === 'admin') {
+              this.$router.push({
+                path: '/tenant-switch/index',
+                query: { redirect: redirectPath }
+              }).catch(() => {})
+            } else {
+              this.$router.push({ path: redirectPath }).catch(() => {})
+            }
           }).catch(() => {
             this.loading = false;
             if (this.captchaEnabled) {

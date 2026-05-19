@@ -83,7 +83,7 @@
           icon="el-icon-plus"
           size="small"
           @click="handleAdd"
-          v-hasPermi="['gzOrder:goodsAudit:add']"
+          v-hasPermi="['gzOrder:apply:add']"
         >新增</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -93,7 +93,7 @@
           icon="el-icon-download"
           size="small"
           @click="handleExport"
-          v-hasPermi="['gzOrder:goodsAudit:export']"
+          v-hasPermi="['gzOrder:apply:export']"
         >导出</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -103,7 +103,7 @@
           icon="el-icon-check"
           size="small"
           @click="handleBatchAudit"
-          v-hasPermi="['gzOrder:goodsAudit:audit']"
+          v-hasPermi="['gzOrder:apply:audit']"
         >审核</el-button>
       </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
@@ -162,13 +162,13 @@
               size="small"
               type="text"
               @click="handleUpdate(scope.row)"
-              v-hasPermi="['gzOrder:goodsAudit:edit']"
+              v-hasPermi="['gzOrder:apply:edit']"
             >修改</el-button>
             <el-button
               size="small"
               type="text"
               @click="handleDelete(scope.row)"
-              v-hasPermi="['gzOrder:goodsAudit:remove']"
+              v-hasPermi="['gzOrder:apply:remove']"
             >删除</el-button>
           </template>
         </template>

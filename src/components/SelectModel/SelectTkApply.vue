@@ -172,7 +172,9 @@ export default {
         warehouseId: null,
         departmentId: null,
         supplierId: null,
-        materialId: null
+        materialId: null,
+        /** 与后端 StkIoBill.params 一致：仅列出明细供应商唯一的退库单 */
+        params: { uniformTkEntrySupplierOnly: '1' }
       },
       // 表单参数
       form: {},
@@ -185,7 +187,6 @@ export default {
     this.queryParams.supplierId = this.supplierValue
     this.queryParams.departmentId = this.departmentValue
     this.queryParams.materialId = this.materialValue
-    this.
     this.getList();
   },
   created() {
@@ -223,13 +224,17 @@ export default {
       this.$emit('closeDialog')
     },
     checkBtn() {
-      //确定按钮
-      if(!this.selectRow) {
-        this.$message({ message: '请先选择数据', type: 'warning' })
-        return
+      if (!this.selectRow || !this.selectRow.length) {
+        this.$message({ message: '请先选择数据', type: 'warning' });
+        return;
       }
-      this.$emit('selectData', this.selectRow)   //发送数据到父组件
-      this.handleClose()
+      const row = this.selectRow[0];
+      if (!row || !row.id) {
+        this.$message({ message: '请先选择数据', type: 'warning' });
+        return;
+      }
+      this.$emit('selectData', this.selectRow);
+      this.handleClose();
     },
     warehouseListIndex({ row, rowIndex }) {
       row.index = (this.queryParams.pageNum - 1) * this.queryParams.pageSize + rowIndex + 1;

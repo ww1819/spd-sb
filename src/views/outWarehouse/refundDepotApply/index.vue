@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <div class="form-fields-container">
       <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="80px">
@@ -28,7 +28,11 @@
 
         <el-row :gutter="16" class="query-row-second">
           <el-col :span="12">
-            <el-form-item label="退库日期" style="display: flex; align-items: center;">
+            <el-form-item label="日期条件" style="display: flex; align-items: center; flex-wrap: wrap;">
+              <el-radio-group v-model="queryParams.dateQueryType" size="small" style="margin-right: 10px; margin-bottom: 4px;">
+                <el-radio-button label="bill">制单日期</el-radio-button>
+                <el-radio-button label="audit">审核日期</el-radio-button>
+              </el-radio-group>
               <el-date-picker
                               v-model="queryParams.beginDate"
                               type="date"
@@ -216,12 +220,12 @@
         <el-row :gutter="8">
           <el-col :span="4">
             <el-form-item label="仓库" prop="warehouseId">
-              <SelectWarehouse v-model="form.warehouseId" excludeWarehouseType="高值"/>
+              <SelectWarehouse v-model="form.warehouseId" :value2="stkIoBillEntryList.length > 0" excludeWarehouseType="高值"/>
             </el-form-item>
           </el-col>
           <el-col :span="4">
             <el-form-item label="科室" prop="departmentId">
-              <SelectDepartment v-model="form.departmentId"/>
+              <SelectDepartment v-model="form.departmentId" :value2="stkIoBillEntryList.length > 0"/>
             </el-form-item>
           </el-col>
           <el-col :span="4">
@@ -278,7 +282,7 @@
               <el-button type="primary" icon="el-icon-plus" size="small" @click="nameBtn">添加</el-button>
             </el-col>
             <el-col :span="1.5">
-              <el-button type="outline" icon="el-icon-ref" size="small" @click="refCkApply">引用出库单</el-button>
+              <el-button type="outline" icon="el-icon-ref" size="small" :disabled="stkIoBillEntryList.length > 0" @click="refCkApply">引用出库单</el-button>
             </el-col>
             <el-col :span="1.5">
               <el-button type="danger" icon="el-icon-delete" size="small" @click="handleDeleteStkIoBillEntry">删除</el-button>
@@ -397,6 +401,8 @@
       v-if="DialogComponentShow"
       :DialogComponentShow="DialogComponentShow"
       :departmentValue="departmentValue"
+      :warehouseValue="form.warehouseId"
+      :selectedDetails="stkIoBillEntryList"
       @closeDialog="closeDialog"
       @selectData="selectData"
     ></SelectDepInventory>
@@ -432,6 +438,8 @@ import SelectUser from '@/components/SelectModel/SelectUser';
 
 import SelectDepInventory from '@/components/SelectModel/SelectDepInventory';
 import SelectCkApply from "@/components/SelectModel/SelectCkApply";
+import { tryShowDocRefQtyError } from '@/utils/hcDocRefQtyValidate'
+import { ioEntryDepInvId } from '@/utils/ioBillEntryIds'
 
 export default {
   name: "OutWarehouseRefund",
@@ -482,6 +490,7 @@ export default {
         billStatus: null,
         userId: null,
         billType: null,
+        dateQueryType: 'bill',
         beginDate: this.getStatDate(),
         endDate: this.getEndDate(),
       },
@@ -574,7 +583,11 @@ export default {
       });
     },
     nameBtn() {
-      if(!this.form.departmentId) {
+      if (!this.form.warehouseId) {
+        this.$message({ message: '请先选择仓库', type: 'warning' })
+        return
+      }
+      if (!this.form.departmentId) {
         this.$message({ message: '请先选择科室', type: 'warning' })
         return
       }
@@ -592,10 +605,29 @@ export default {
       this.DialogCkApplyComponentShow = false
     },
     selectData(val) {
-      //监听“弹窗组件”返回的数据
       this.selectRow = val;
+      const rows = Array.isArray(val) ? val : (val ? [val] : []);
+      const existedKc = new Set(
+        this.stkIoBillEntryList
+          .map(e => e && ioEntryDepInvId(e))
+          .filter(id => id != null && id !== '')
+          .map(id => String(id))
+      );
+      const existedBatchNos = new Set(
+        this.stkIoBillEntryList
+          .filter(e => e && !ioEntryDepInvId(e))
+          .map(e => e.batchNo)
+          .filter(b => b != null && String(b).trim() !== '')
+      );
 
-      this.selectRow.forEach((item) => {
+      rows.forEach((item) => {
+        if (!item) return;
+        if (item.id != null && existedKc.has(String(item.id))) {
+          return;
+        }
+        if ((item.id == null || item.id === '') && item.batchNo && existedBatchNos.has(item.batchNo)) {
+          return;
+        }
         let obj = {};
         obj.materialId = item.materialId;
         obj.qty = item.qty;
@@ -603,12 +635,14 @@ export default {
         obj.amt = item.amt;
         obj.batchNo = item.batchNo;
         obj.batchNumber = item.materialNo;
-        obj.beginTime = item.beginTime;
-        obj.endTime = item.endTime;
+        obj.beginTime = item.beginTime || item.beginDate || null;
+        obj.endTime = item.endTime || item.endDate || null;
         obj.remark = item.remark;
         obj.material = item.material;
+        obj.depInventoryId = item.id != null ? item.id : null;
+        obj.stkInventoryId = null;
+        obj.kcNo = null;
         this.stkIoBillEntryList.push(obj);
-        // this.stkIoBillEntryList.splice(this.stkIoBillEntryList.length, 0, JSON.parse(JSON.stringify(item)));
       });
     },
     getStatDate(){
@@ -696,6 +730,7 @@ export default {
     /** 重置按钮操作 */
     resetQuery() {
       this.resetForm("queryForm");
+      this.queryParams.dateQueryType = 'bill';
       this.queryParams.beginDate = null;
       this.queryParams.endDate = null;
       this.handleQuery();
@@ -751,6 +786,28 @@ export default {
     async submitForm() {
       this.$refs["form"].validate(async (valid) => {
         if (valid) {
+          const kcMap = new Map();
+          const batchMap = new Map();
+          for (const [index, entry] of this.stkIoBillEntryList.entries()) {
+            if (!entry) continue;
+            const depId = ioEntryDepInvId(entry)
+            if (depId != null && depId !== '') {
+              const kid = String(depId);
+              if (kcMap.has(kid)) {
+                this.$modal.msgError(`明细第${kcMap.get(kid)}行与第${index + 1}行指向同一科室库存，请检查后再保存`);
+                return;
+              }
+              kcMap.set(kid, index + 1);
+              continue;
+            }
+            const key = entry.batchNo && String(entry.batchNo).trim();
+            if (!key) continue;
+            if (batchMap.has(key)) {
+              this.$modal.msgError(`明细第${batchMap.get(key)}行与第${index + 1}行批次号重复，请检查后再保存`);
+              return;
+            }
+            batchMap.set(key, index + 1);
+          }
           // 新增退库校验逻辑（与出库逻辑保持一致）
           for (const [index, entry] of this.stkIoBillEntryList.entries()) {
             if (entry.materialId) {
@@ -784,13 +841,13 @@ export default {
               this.$modal.msgSuccess("修改成功");
               this.open = false;
               this.getList();
-            });
+            }).catch(err => { tryShowDocRefQtyError(this, err) });
           } else {
             addTkInventory(this.form).then(response => {
               this.$modal.msgSuccess("新增成功");
               this.open = false;
               this.getList();
-            });
+            }).catch(err => { tryShowDocRefQtyError(this, err) });
           }
         }
       });
@@ -829,6 +886,9 @@ export default {
       obj.beginTime = "";
       obj.endTime = "";
       obj.remark = "";
+      obj.kcNo = null;
+      obj.depInventoryId = null;
+      obj.stkInventoryId = null;
 
       this.stkIoBillEntryList.push(obj);
     },
@@ -855,41 +915,35 @@ export default {
       }, `warehouse_${new Date().getTime()}.xlsx`)
     },
     selectCkApplyData(val) {
-      console.log('selectCkApplyData called with:', val);
-      // 假设 val 是出库单对象或数组，取 id
       const ckApplyId = Array.isArray(val) ? val[0].id : val.id;
-      console.log('ckApplyId:', ckApplyId);
       if (!ckApplyId) return;
 
-      const ckApplyIdStr = String(ckApplyId);
-      var param = {
-        ckApplyId: ckApplyIdStr
-      };
-      console.log('calling createTkEntriesByCkApply with param:', param);
-      createTkEntriesByCkApply(param).then(response => {
-        console.log('createTkEntriesByCkApply response:', response);
+      const keepCreater = this.form.createrName;
+      const keepCreateBy = this.form.createBy;
+      createTkEntriesByCkApply({ ckApplyId: String(ckApplyId) }).then(response => {
         if (response && response.data) {
           this.form = response.data;
-          this.stkIoBillEntryList = response.data.stkIoBillEntryList;
+          if (!this.form.createrName && keepCreater) {
+            this.form.createrName = keepCreater;
+          }
+          if (!this.form.createBy && keepCreateBy) {
+            this.form.createBy = keepCreateBy;
+          }
+          this.stkIoBillEntryList = response.data.stkIoBillEntryList || [];
           this.form.billStatus = '1';
           this.form.billType = '401';
           this.DialogCkApplyComponentShow = false;
-          console.log('form updated:', this.form);
-          console.log('stkIoBillEntryList updated:', this.stkIoBillEntryList);
         }
-      }).catch((error) => {
-        console.error('createTkEntriesByCkApply error:', error);
+      }).catch(() => {
         this.$message.error("加载出库单明细失败");
       });
     },
     refCkApply() {
-      if(!this.form.warehouseId) {
-        this.$message({ message: '请先选择仓库', type: 'warning' })
-        return
+      if (this.stkIoBillEntryList.length > 0) {
+        this.$message({ message: '已有退库明细时不能引用单据', type: 'warning' });
+        return;
       }
-
-      //打开“弹窗组件”
-      this.DialogCkApplyComponentShow = true
+      this.DialogCkApplyComponentShow = true;
       this.warehouseValue = this.form.warehouseId;
       this.departmentValue = this.form.departmentId;
     }

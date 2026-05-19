@@ -81,3 +81,59 @@ export function createRkEntriesByDingdan(query) {
   })
 }
 
+/** 数据可视化大屏：验收/出库/消耗 金额与数量合计（当前租户） */
+export function biScreenConsumablesTotals() {
+  return request({
+    url: '/warehouse/warehouse/biScreenConsumablesTotals',
+    method: 'get'
+  })
+}
+
+/** 数据可视化大屏：本月送货入库前十供应商（按配送金额合计降序） */
+export function biScreenInboundSupplierTop10() {
+  return request({
+    url: '/warehouse/warehouse/biScreenInboundSupplierTop10',
+    method: 'get'
+  })
+}
+
+/** 数据可视化大屏：近 20 天入退货按日汇总金额（高值/低值耗材） */
+export function biScreenInboundDailyHighLowValue() {
+  return request({
+    url: '/warehouse/warehouse/biScreenInboundDailyHighLowValue',
+    method: 'get'
+  })
+}
+
+/** 数据可视化大屏：当月出退库按耗材汇总金额 TOP20 */
+export function biScreenOutboundMaterialMonthTop() {
+  return request({
+    url: '/warehouse/warehouse/biScreenOutboundMaterialMonthTop',
+    method: 'get'
+  })
+}
+
+/** 数据可视化大屏：当月入退货按财务分类汇总入库金额（玫瑰饼图/圆环图） */
+export function biScreenInboundFinanceCategoryMonth() {
+  return request({
+    url: '/warehouse/warehouse/biScreenInboundFinanceCategoryMonth',
+    method: 'get'
+  })
+}
+
+/** 数据可视化大屏：今日已审核出库单笔数、今日已审核入库单(101)笔数 */
+export function biScreenTodayInboundOutboundBillCount() {
+  return request({
+    url: '/warehouse/warehouse/biScreenTodayInboundOutboundBillCount',
+    method: 'get'
+  })
+}
+
+/** 数据可视化大屏：当年按自然月汇总入库金额(101)、退货入库金额(301) */
+export function biScreenYearInboundReturnByMonth() {
+  return request({
+    url: '/warehouse/warehouse/biScreenYearInboundReturnByMonth',
+    method: 'get'
+  })
+}
+

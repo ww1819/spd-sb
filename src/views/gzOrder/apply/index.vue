@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="80px">
 
@@ -147,7 +147,7 @@
           <dict-tag :options="dict.type.biz_status" :value="scope.row.orderStatus"/>
         </template>
       </el-table-column>
-      <el-table-column label="审核人" align="center" prop="updateBy" width="100" show-overflow-tooltip resizable>
+      <el-table-column label="审核人" align="center" prop="auditBy" width="100" show-overflow-tooltip resizable>
         <template slot-scope="scope">
           <span>{{ getAuditorName(scope.row) }}</span>
         </template>
@@ -229,6 +229,11 @@
                   <el-col :span="4">
                     <el-form-item label="仓库" prop="warehouseId">
                       <SelectWarehouse v-model="form.warehouseId" :value2="gzOrderEntryList.length > 0" :disabled="warehouseAutoFilled" includeWarehouseType="高值"/>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="4">
+                    <el-form-item label="申请科室" prop="applyDepartmentId">
+                      <SelectDepartment v-model="form.applyDepartmentId" style="width: 140px"/>
                     </el-form-item>
                   </el-col>
                   <el-col :span="4">
@@ -536,7 +541,9 @@ import { listFixedNumber } from "@/api/monitoring/fixedNumber";
 import { listWarehouse } from "@/api/foundation/warehouse";
 import SelectMaterial from '@/components/SelectModel/SelectMaterial';
 import SelectWarehouse from '@/components/SelectModel/SelectWarehouse';
+import SelectDepartment from '@/components/SelectModel/SelectDepartment';
 import SelectSupplier from "@/components/SelectModel/SelectSupplier";
+import { tryShowGzInventoryError } from '@/utils/gzInventoryValidate';
 import SelectGZMaterialFilter from '@/components/SelectModel/SelectGZMaterialFilter';
 import gzOrderPrint from "@/views/gzOrder/audit/gzOrderPrint";
 import barcodePrint from "@/views/gzOrder/apply/barcodePrint";
@@ -547,7 +554,7 @@ import item from "@/layout/components/Sidebar/Item.vue";
 export default {
   name: "Order",
   dicts: ['biz_status','bill_type'],
-  components: {SelectSupplier,SelectMaterial,SelectWarehouse,SelectGZMaterialFilter,gzOrderPrint,barcodePrint},
+  components: {SelectSupplier,SelectMaterial,SelectWarehouse,SelectDepartment,SelectGZMaterialFilter,gzOrderPrint,barcodePrint},
   data() {
     return {
       // 遮罩层
@@ -1321,12 +1328,14 @@ export default {
         supplerId: null,
         orderDate: null,
         warehouseId: null,
+        applyDepartmentId: null,
         orderStatus: null,
         orderType: null,
         delFlag: null,
         auditDate: null,
         createBy: null,
         createTime: null,
+        auditBy: null,
         updateBy: null,
         updateTime: null,
         remark: null,
@@ -1471,34 +1480,46 @@ export default {
         this.userOptions = response || [];
       });
     },
+    resolveSysUserDisplayName(rawKey) {
+      if (rawKey === null || rawKey === undefined || rawKey === '') {
+        return '';
+      }
+      const key = String(rawKey).trim();
+      const list = this.userOptions || [];
+      const isNumericId = /^\d+$/.test(key);
+      let user = null;
+      if (isNumericId) {
+        user = list.find(u => String(u.userId) === key || u.userId == key);
+      }
+      if (!user) {
+        user = list.find(u =>
+          String(u.userName) === key ||
+          (u.nickName != null && String(u.nickName) === key)
+        );
+      }
+      if (user) {
+        return user.nickName || user.userName || key;
+      }
+      return key;
+    },
     /** 获取制单人姓名 */
     getCreatorName(row) {
-      if (row.createBy) {
-        const user = this.userOptions.find(u => u.userName === row.createBy || u.userId === row.createBy);
-        return user ? (user.nickName || user.userName) : row.createBy;
+      if (!row || !row.createBy) {
+        return '';
       }
-      return '';
+      return this.resolveSysUserDisplayName(row.createBy);
     },
-    /** 获取审核人姓名 */
+    /** 获取审核人姓名（优先 audit_by，兼容历史数据 update_by） */
     getAuditorName(row) {
-      if (row.updateBy) {
-        // 审核人通常是updateBy（审核操作时更新）
-        const user = this.userOptions.find(u => {
-          return u.userName === row.updateBy || 
-                 u.userId === row.updateBy ||
-                 u.userId == row.updateBy ||
-                 String(u.userId) === String(row.updateBy);
-        });
-        if (user) {
-          return user.nickName || user.userName;
-        }
-        // 如果updateBy不是纯数字，可能是姓名，直接返回
-        if (!/^\d+$/.test(String(row.updateBy))) {
-          return row.updateBy;
-        }
-        return row.updateBy;
+      if (!row) {
+        return '';
       }
-      return '';
+      const auditKey =
+        row.auditBy != null && String(row.auditBy).trim() !== '' ? row.auditBy : row.updateBy;
+      if (!auditKey) {
+        return '';
+      }
+      return this.resolveSysUserDisplayName(auditKey);
     },
     /** 格式化日期，如果时分秒是00:00:00则使用createTime或updateTime的时分秒 */
     formatOrderDate(dateStr, timeStr) {
@@ -1777,6 +1798,7 @@ export default {
         const queryParams = {
           warehouseId: warehouseId,
           orderNo: orderData.orderNo, // 添加订单号过滤
+          includeZeroQty: true, // 库存为 0 仍可补打条码
           pageNum: 1,
           pageSize: 10000
         };
@@ -1789,6 +1811,7 @@ export default {
             console.log('使用订单号过滤未找到库存，尝试不使用订单号过滤查询');
             return listDepotInventory({
               warehouseId: warehouseId,
+              includeZeroQty: true,
               pageNum: 1,
               pageSize: 10000
             }).then(secondResponse => {
@@ -1921,9 +1944,9 @@ export default {
       this.title = "添加高值备货入库";
       this.form.orderStatus = '1';
       this.form.orderType = '101';
-      //操作人
-      var userName = this.$store.state.user.name;
-      this.form.createBy = userName;
+      const uid = this.$store.getters.userId;
+      this.form.createBy = uid != null && uid !== '' ? String(uid) : (this.$store.state.user.name || '');
+      this.form.creatorName = this.$store.getters.nickName || this.$store.state.user.name || '--';
       this.form.orderDate = this.getOrderDate();
       this.action = true;
     },
@@ -2040,7 +2063,7 @@ export default {
               this.$modal.msgSuccess("保存成功");
               // 保存后不关闭页面，继续操作
               this.getList();
-            });
+            }).catch(err => { tryShowGzInventoryError(this, err); });
           } else {
             addOrder(this.form).then(response => {
               this.$modal.msgSuccess("保存成功");
@@ -2048,7 +2071,7 @@ export default {
               // 更新表单ID，以便后续修改
               this.form.id = response.data;
               this.getList();
-            });
+            }).catch(err => { tryShowGzInventoryError(this, err); });
           }
         }
       });

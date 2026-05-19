@@ -31,6 +31,18 @@ export function getCustomerOptions() {
   })
 }
 
+// 平台管理员切换租户并重签 super_01 token
+export function switchTenant(customerId, systemType = 'equipment') {
+  return request({
+    url: '/switchTenant',
+    method: 'post',
+    data: {
+      customerId,
+      systemType
+    }
+  })
+}
+
 // 注册方法
 export function register(data) {
   return request({
@@ -48,6 +60,17 @@ export function getInfo() {
   return request({
     url: '/getEquipmentInfo',
     method: 'get'
+  })
+}
+
+// 实时获取当前租户（与耗材端一致，供 RefreshTenant 刷新 Vuex，避免会话/缓存导致 X-Tenant-Id 缺失或与 Token 不一致）
+export function getCurrentTenant() {
+  return request({
+    url: '/getCurrentTenant',
+    method: 'get',
+    headers: {
+      skipTenantSync: true
+    }
   })
 }
 

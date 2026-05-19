@@ -83,6 +83,18 @@
         >导出</el-button>
       </el-col>
       <el-col :span="1.5">
+        <el-tooltip content="单表导出，列布局与枣强出退库明细表一致（不按供应商拆文件）" placement="top">
+          <el-button
+            type="warning"
+            plain
+            icon="el-icon-document"
+            size="medium"
+            @click="handleExportOverall"
+            v-hasPermi="['outWarehouse:outWarehouseQuery:exportOverall']"
+          >整体导出</el-button>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="1.5">
         <el-button
           type="primary"
           icon="el-icon-search"
@@ -400,6 +412,31 @@ export default {
       this.download('warehouse/warehouse/export', {
         ...this.queryParams
       }, `warehouse_${new Date().getTime()}.xlsx`)
+    },
+    /** 整体导出：与枣强出退库明细表样式一致的单工作表明细 */
+    handleExportOverall() {
+      const queryParams = { ...this.queryParams }
+      delete queryParams.pageNum
+      delete queryParams.pageSize
+      if (!queryParams.beginDate || queryParams.beginDate === '' || queryParams.beginDate === null || queryParams.beginDate === undefined) {
+        queryParams.beginDate = null
+      }
+      if (!queryParams.endDate || queryParams.endDate === '' || queryParams.endDate === null || queryParams.endDate === undefined) {
+        queryParams.endDate = null
+      } else if (queryParams.endDate && queryParams.endDate.length === 10) {
+        queryParams.endDate = queryParams.endDate + ' 23:59:59'
+      }
+      Object.keys(queryParams).forEach(key => {
+        if (queryParams[key] === '') {
+          queryParams[key] = null
+        }
+      })
+      const b = queryParams.beginDate || ''
+      const e = (queryParams.endDate && String(queryParams.endDate).length >= 10)
+        ? String(queryParams.endDate).substring(0, 10)
+        : (queryParams.endDate || '')
+      this.download('warehouse/rthWarehouse/exportCTKOverall', queryParams,
+        `出退库明细_统计时间${b}至${e}_${new Date().getTime()}.xlsx`)
     }
   }
 };
