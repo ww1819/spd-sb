@@ -948,6 +948,7 @@ export default {
           postIds: postIdsNorm,
           roleIds: roleIdsNorm
         };
+        delete payload.password;
         // 本弹窗只改菜单/科室/仓库权限，不传 workGroupIds，后端保留 sb_work_group_user（传 [] 会清空）
         return updateUser(payload);
       }).then(response => {
